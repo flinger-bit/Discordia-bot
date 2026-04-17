@@ -1,5 +1,6 @@
 package com.discordia.terminal
 
+import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Environment
@@ -31,6 +32,7 @@ class SetupActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = "Setup Folder"
 
+        binding.rvScripts.layoutManager = LinearLayoutManager(this)
         binding.tvOutput.typeface = Typeface.MONOSPACE
         ensureSetupFolder()
         loadDirectory(currentDir)
@@ -45,180 +47,47 @@ class SetupActivity : AppCompatActivity() {
     }
 
     private fun createExampleScripts() {
-        // Create folder structure
-        val dirs = listOf("website", "security", "tools", "minecraft", "system", "custom")
-        dirs.forEach { File(setupRoot, it).mkdirs() }
+        listOf("website", "security", "tools", "minecraft", "system", "custom", ".github/workflows").forEach {
+            File(setupRoot, it).mkdirs()
+        }
 
-        // Website setup script
-        File(setupRoot, "website/start-server.sh").writeText("""#!/bin/sh
-# Start a local HTTP server on port 8080
-# Serves files from DiscordiaSetup/website/public/
+        File(setupRoot, "website/start-server.sh").apply {
+            writeText("#!/bin/sh\nPORT=8080\nWEBDIR=\"/sdcard/DiscordiaSetup/website/public\"\nmkdir -p \"\$WEBDIR\"\necho \"Serving \$WEBDIR on port \$PORT\"\nbusybox httpd -f -p \$PORT -h \"\$WEBDIR\" 2>/dev/null || python3 -m http.server \$PORT --directory \"\$WEBDIR\" 2>/dev/null || echo \"No HTTP server found. Use Discordia Local Server instead.\"\n")
+            setExecutable(true)
+        }
+        File(setupRoot, "website/public").mkdirs()
+        File(setupRoot, "website/public/index.html").writeText("<!DOCTYPE html>\n<html>\n<head><title>My Site</title>\n<style>body{background:#0d1117;color:#58a6ff;font-family:monospace;padding:40px;}</style>\n</head>\n<body><h1>My Website</h1><p>Served from Samsung SM-X200 via Discordia Terminal.</p></body>\n</html>\n")
 
-PORT=8080
-WEBDIR="${'$'}{SETUP_DIR:-/sdcard/DiscordiaSetup/website}/public"
-mkdir -p "${'$'}WEBDIR"
+        File(setupRoot, "security/set-password.sh").apply {
+            writeText("#!/bin/sh\nPASS_FILE=\"/sdcard/DiscordiaSetup/security/.passwords\"\nprintf 'Service name: '; read SERVICE\nprintf 'Password: '; read PASSWORD\nHASH=\$(echo -n \"\$PASSWORD\" | sha256sum 2>/dev/null | cut -d' ' -f1)\nif [ -z \"\$HASH\" ]; then HASH=\"\$(echo -n \"\$PASSWORD\" | md5sum | cut -d' ' -f1)\"; fi\necho \"\$SERVICE:\$HASH\" >> \"\$PASS_FILE\"\necho \"Password set for: \$SERVICE\"\n")
+            setExecutable(true)
+        }
 
-# Create index.html if it doesn't exist
-if [ ! -f "${'$'}WEBDIR/index.html" ]; then
-cat > "${'$'}WEBDIR/index.html" << 'HTML'
-<!DOCTYPE html>
-<html><head><title>My Site</title></head>
-<body><h1>My Website</h1><p>Served from Samsung SM-X200.</p></body>
-</html>
-HTML
-fi
+        File(setupRoot, "tools/device-info.sh").apply {
+            writeText("#!/bin/sh\necho '=== Discordia Device Info ==='\necho \"Model:   \$(getprop ro.product.model 2>/dev/null || echo SM-X200)\"\necho \"Android: \$(getprop ro.build.version.release 2>/dev/null || echo 14)\"\necho \"Storage: \$(df -h /sdcard 2>/dev/null | tail -1 | awk '{print \$2\" total, \"\$4\" free\"}')\"\necho \"IP:      \$(ip route get 1 2>/dev/null | awk '{print \$7}' | head -1)\"\necho '============================'\n")
+            setExecutable(true)
+        }
 
-echo "Serving ${'$'}WEBDIR on port ${'$'}PORT"
-echo "Open: http://localhost:${'$'}PORT"
-# Use Discordia's built-in server or busybox httpd
-busybox httpd -f -p ${'$'}PORT -h "${'$'}WEBDIR" 2>/dev/null || \
-  python3 -m http.server ${'$'}PORT --directory "${'$'}WEBDIR" 2>/dev/null || \
-  echo "No HTTP server found. Use Discordia Local Server instead."
-""")
+        File(setupRoot, "tools/install-python.sh").apply {
+            writeText("#!/bin/sh\nif command -v python3 > /dev/null 2>&1; then\n  echo \"Python3: \$(python3 --version)\"\nelif command -v pkg > /dev/null 2>&1; then\n  echo 'Installing via Termux...'; pkg install python -y\nelse\n  echo 'Termux not found. Install from F-Droid then: pkg install python'\nfi\n")
+            setExecutable(true)
+        }
 
-        // Password setup script
-        File(setupRoot, "security/set-password.sh").writeText("""#!/bin/sh
-# Create or update a password file
-# Passwords are stored hashed (SHA-256) in /sdcard/DiscordiaSetup/security/.passwords
+        File(setupRoot, "tools/hello.py").writeText("#!/usr/bin/env python3\nprint('Hello from Python on Samsung SM-X200!')\nimport sys\nprint(f'Python version: {sys.version}')\n")
+        File(setupRoot, "tools/hello.js").writeText("#!/usr/bin/env node\nconsole.log('Hello from Node.js on Samsung SM-X200!');\nconsole.log('Node version:', process.version);\n")
 
-PASS_FILE="/sdcard/DiscordiaSetup/security/.passwords"
-echo "Set a password for which service? (e.g. wifi, server, admin)"
-echo -n "Service name: "
-read SERVICE
-echo -n "New password: "
-read -s PASSWORD
-HASH=$(echo -n "${'$'}PASSWORD" | sha256sum | cut -d' ' -f1)
-echo "${'$'}SERVICE:${'$'}HASH" >> "${'$'}PASS_FILE"
-echo ""
-echo "Password set for: ${'$'}SERVICE"
-echo "Hash stored in: ${'$'}PASS_FILE"
-""")
+        File(setupRoot, "minecraft/new-java-mod.sh").apply {
+            writeText("#!/bin/sh\nMOD_NAME=\"\${1:-MyMod}\"\nOUT=\"/sdcard/DiscordiaProjects/minecraft-java/\$MOD_NAME\"\nmkdir -p \"\$OUT/src/main/java\"\nmkdir -p \"\$OUT/src/main/resources/META-INF\"\necho \"Mod '\$MOD_NAME' scaffolded at: \$OUT\"\necho 'Push to GitHub to build the JAR via GitHub Actions.'\n")
+            setExecutable(true)
+        }
 
-        // Package installer helper
-        File(setupRoot, "tools/install-python.sh").writeText("""#!/bin/sh
-# Install Python via Termux (if available) or check system
-echo "Checking for Python..."
-if command -v python3 > /dev/null 2>&1; then
-  echo "Python3 already available: $(python3 --version)"
-elif command -v pkg > /dev/null 2>&1; then
-  echo "Installing Python via Termux..."
-  pkg install python -y
-else
-  echo "Termux not found. Python not available on this system."
-  echo "Tip: Install Termux from F-Droid, then run: pkg install python"
-fi
-""")
+        File(setupRoot, "system/cleanup.sh").apply {
+            writeText("#!/bin/sh\necho 'Cleaning DiscordiaSetup temp files...'\nrm -rf /sdcard/DiscordiaSetup/.tmp/ 2>/dev/null\necho 'Disk usage:'\ndu -sh /sdcard/DiscordiaSetup/\n")
+            setExecutable(true)
+        }
 
-        File(setupRoot, "tools/install-nodejs.sh").writeText("""#!/bin/sh
-# Install Node.js via Termux (if available)
-echo "Checking for Node.js..."
-if command -v node > /dev/null 2>&1; then
-  echo "Node.js already available: $(node --version)"
-elif command -v pkg > /dev/null 2>&1; then
-  echo "Installing Node.js via Termux..."
-  pkg install nodejs -y
-else
-  echo "Termux not found. Node.js not available on this system."
-  echo "Tip: Install Termux from F-Droid, then run: pkg install nodejs"
-fi
-""")
-
-        File(setupRoot, "tools/download-file.sh").writeText("""#!/bin/sh
-# Download a file from the internet
-# Usage: set URL and DEST below, then run
-
-URL="https://example.com/file.zip"
-DEST="/sdcard/Downloads/file.zip"
-
-echo "Downloading: ${'$'}URL"
-echo "Saving to: ${'$'}DEST"
-curl -L -o "${'$'}DEST" "${'$'}URL" && echo "Done!" || wget -O "${'$'}DEST" "${'$'}URL" && echo "Done!" || echo "No downloader found."
-""")
-
-        // Minecraft setup
-        File(setupRoot, "minecraft/new-java-mod.sh").writeText("""#!/bin/sh
-# Create a new Minecraft Java mod skeleton
-# Requires: name and package set below
-
-MOD_NAME="${'$'}{1:-MyMod}"
-PACKAGE="com.example.$(echo ${'$'}MOD_NAME | tr '[:upper:]' '[:lower:]')"
-OUT_DIR="/sdcard/DiscordiaProjects/minecraft-java/${'$'}MOD_NAME"
-
-mkdir -p "${'$'}OUT_DIR/src/main/java/$(echo ${'$'}PACKAGE | tr '.' '/')"
-mkdir -p "${'$'}OUT_DIR/src/main/resources/META-INF"
-
-echo "Mod: ${'$'}MOD_NAME"
-echo "Package: ${'$'}PACKAGE"
-echo "Location: ${'$'}OUT_DIR"
-echo ""
-echo "Files created. Push to GitHub + use Actions to build."
-echo "See: https://github.com/flinger-bit/Discordia-bot/actions"
-""")
-
-        File(setupRoot, "minecraft/new-bedrock-addon.sh").writeText("""#!/bin/sh
-# Create a new Minecraft Bedrock addon
-ADDON_NAME="${'$'}{1:-MyAddon}"
-OUT_DIR="/sdcard/DiscordiaProjects/minecraft-bedrock/${'$'}ADDON_NAME"
-mkdir -p "${'$'}OUT_DIR/behavior_pack"
-mkdir -p "${'$'}OUT_DIR/resource_pack"
-echo "Bedrock addon '${'$'}ADDON_NAME' created at: ${'$'}OUT_DIR"
-echo "Edit manifest.json files in each pack folder."
-""")
-
-        // System info
-        File(setupRoot, "system/device-info.sh").writeText("""#!/bin/sh
-# Show device information
-echo "=== Discordia System Info ==="
-echo "Device:    $(getprop ro.product.model 2>/dev/null || echo 'Unknown')"
-echo "Android:   $(getprop ro.build.version.release 2>/dev/null || echo 'Unknown')"
-echo "Kernel:    $(uname -r 2>/dev/null || echo 'Unknown')"
-echo "CPU:       $(cat /proc/cpuinfo 2>/dev/null | grep 'Hardware' | head -1 | cut -d: -f2 || echo 'Unknown')"
-echo "Storage:   $(df -h /sdcard 2>/dev/null | tail -1 | awk '{print $2" total, "$4" free"}' || echo 'Unknown')"
-echo "RAM:       $(cat /proc/meminfo 2>/dev/null | grep MemTotal | awk '{print $2" kB"}' || echo 'Unknown')"
-echo "IP:        $(ip route get 1 2>/dev/null | awk '{print $7}' || ifconfig 2>/dev/null | grep 'inet ' | head -1 | awk '{print $2}' || echo 'Unknown')"
-echo "==========================="
-""")
-
-        File(setupRoot, "system/cleanup.sh").writeText("""#!/bin/sh
-# Clean up temp files and caches
-echo "Cleaning up..."
-rm -rf /sdcard/DiscordiaSetup/.tmp/ 2>/dev/null
-echo "Cleared temp files."
-echo "Disk usage:"
-du -sh /sdcard/DiscordiaSetup/
-""")
-
-        // README
-        File(setupRoot, "README.txt").writeText("""DISCORDIA SETUP FOLDER
-======================
-Device: Samsung SM-X200 | Android 14
-
-This folder is your personal configuration hub.
-Put any script, config file, or resource here and run it from the Discordia Setup screen.
-
-FOLDER STRUCTURE:
-  website/     — Scripts to start web servers, manage sites
-  security/    — Password management, key generation
-  tools/       — Install helpers (Python, Node.js, etc.)
-  minecraft/   — Mod and addon creation helpers
-  system/      — Device info, cleanup, configuration
-  custom/      — Your own scripts and files
-
-SUPPORTED SCRIPT TYPES:
-  .sh   — Shell script (runs via /system/bin/sh)
-  .py   — Python script (requires Python installed)
-  .js   — JavaScript/Node.js script (requires Node)
-  .rb   — Ruby script
-  .php  — PHP script
-  .pl   — Perl script
-  .lua  — Lua script
-
-Any file type can be placed here. Scripts are executed
-by tapping them in the Setup screen.
-
-Tip: Create a 'custom/' subfolder with your own
-configuration scripts for repeatable setup tasks!
-""")
+        File(setupRoot, ".github/workflows/build.yml").writeText("name: Build\non:\n  push:\n    branches: [ main ]\n  workflow_dispatch:\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Build\n        run: echo 'Configure your build here!'\n")
+        File(setupRoot, "README.txt").writeText("DISCORDIA SETUP FOLDER\n======================\nDevice: Samsung SM-X200 | Android 14\n\nPut scripts here and run them from the app.\nTap any file to run/view/edit/delete.\n\nSUPPORTED:\n  .sh  — Shell  |  .py — Python  |  .js — Node.js\n  .php — PHP    |  .rb — Ruby    |  .html — Opens in browser\n  .lua — Lua    |  .txt — View   |  any  — Execute\n\nFOLDERS:\n  website/    tools/    security/\n  minecraft/  system/   custom/\n  .github/workflows/ — Your GitHub Actions YAML files\n")
     }
 
     private fun loadDirectory(dir: File) {
@@ -229,20 +98,17 @@ configuration scripts for repeatable setup tasks!
 
         val entries = mutableListOf<File>()
         if (dir != setupRoot) entries.add(File(dir, ".."))
-        val files = dir.listFiles()?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        val files = try {
+            dir.listFiles()?.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name }) ?: emptyList()
+        } catch (_: Exception) { emptyList() }
         entries.addAll(files)
 
         binding.rvScripts.adapter = SetupAdapter(entries) { file ->
             if (file.name == "..") {
-                if (dirHistory.isNotEmpty()) {
-                    currentDir = dirHistory.removeLast()
-                    loadDirectory(currentDir)
-                } else {
-                    loadDirectory(setupRoot)
-                }
+                if (dirHistory.isNotEmpty()) { currentDir = dirHistory.removeLast(); loadDirectory(currentDir) }
+                else loadDirectory(setupRoot)
             } else if (file.isDirectory) {
-                dirHistory.add(currentDir)
-                loadDirectory(file)
+                dirHistory.add(currentDir); loadDirectory(file)
             } else {
                 showFileOptions(file)
             }
@@ -251,26 +117,47 @@ configuration scripts for repeatable setup tasks!
     }
 
     private fun showFileOptions(file: File) {
-        val options = arrayOf("▶ Run / Execute", "📄 View contents", "✏ Edit in Terminal", "🗑 Delete")
+        val ext = file.extension.lowercase()
+        val isRunnable = ext in listOf("sh", "bash", "py", "js", "rb", "php", "pl", "lua")
+        val isViewable = ext in listOf("txt", "md", "json", "xml", "toml", "ini", "cfg", "conf", "yml", "yaml", "csv", "log", "gradle", "kt", "java", "html", "htm", "css")
+        val isHtml = ext in listOf("html", "htm")
+
+        val options = buildList {
+            if (isRunnable) add("▶ Run / Execute")
+            if (isHtml) add("🌐 Open in Browser")
+            if (isViewable) add("📄 View contents")
+            add("✏ Edit in Terminal")
+            add("🗑 Delete")
+        }.toTypedArray()
+
         AlertDialog.Builder(this)
             .setTitle(file.name)
             .setItems(options) { _, which ->
-                when (which) {
-                    0 -> runScript(file)
-                    1 -> viewFileContents(file)
-                    2 -> openInTerminal(file)
-                    3 -> deleteFile(file)
+                when (options[which]) {
+                    "▶ Run / Execute" -> runScript(file)
+                    "🌐 Open in Browser" -> openInWebView(file)
+                    "📄 View contents" -> viewFileContents(file)
+                    "✏ Edit in Terminal" -> Toast.makeText(this, "Open Terminal and type:\ncat ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                    "🗑 Delete" -> deleteFile(file)
                 }
             }.show()
     }
 
+    private fun openInWebView(file: File) {
+        startActivity(Intent(this, WebViewActivity::class.java).apply {
+            putExtra(WebViewActivity.EXTRA_FILE_PATH, file.absolutePath)
+        })
+    }
+
     private fun runScript(file: File) {
-        binding.tvOutput.text = "▶ Running: ${file.name}\n\n"
+        binding.tvOutput.text = "▶ Running: ${file.name}\n"
+        SoundManager.playClick()
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { executeScript(file) }
             withContext(Dispatchers.Main) {
-                binding.tvOutput.text = "▶ ${file.name}\n${"─".repeat(40)}\n$result\n${"─".repeat(40)}\n✅ Finished"
+                binding.tvOutput.text = "▶ ${file.name}\n${"─".repeat(36)}\n$result\n${"─".repeat(36)}\n✅ Done"
                 binding.scrollOutput.post { binding.scrollOutput.fullScroll(android.view.View.FOCUS_DOWN) }
+                SoundManager.playSuccess()
             }
         }
     }
@@ -278,14 +165,10 @@ configuration scripts for repeatable setup tasks!
     private fun viewFileContents(file: File) {
         try {
             val content = file.readText()
-            binding.tvOutput.text = "📄 ${file.name}\n${"─".repeat(40)}\n$content"
+            binding.tvOutput.text = "📄 ${file.name}\n${"─".repeat(36)}\n$content"
         } catch (e: Exception) {
-            binding.tvOutput.text = "Cannot read file: ${e.message}"
+            binding.tvOutput.text = "Cannot read: ${e.message}"
         }
-    }
-
-    private fun openInTerminal(file: File) {
-        Toast.makeText(this, "Tip: open Terminal and type:\nsh ${file.absolutePath}", Toast.LENGTH_LONG).show()
     }
 
     private fun deleteFile(file: File) {
@@ -293,78 +176,67 @@ configuration scripts for repeatable setup tasks!
             .setTitle("Delete ${file.name}?")
             .setMessage("This cannot be undone.")
             .setPositiveButton("Delete") { _, _ ->
-                val deleted = if (file.isDirectory) file.deleteRecursively() else file.delete()
-                if (deleted) {
-                    loadDirectory(currentDir)
-                    Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Could not delete", Toast.LENGTH_SHORT).show()
-                }
+                val ok = if (file.isDirectory) file.deleteRecursively() else file.delete()
+                if (ok) { loadDirectory(currentDir); Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show() }
+                else Toast.makeText(this, "Could not delete", Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            .setNegativeButton("Cancel", null).show()
     }
 
     private fun executeScript(file: File): String {
         val runner = when (file.extension.lowercase()) {
             "sh", "bash" -> arrayOf("/system/bin/sh", file.absolutePath)
-            "py" -> arrayOf("python3", file.absolutePath)
+            "py" -> arrayOf("python3", file.absolutePath).let { r ->
+                if (runProcess(arrayOf("which", "python3")).contains("python3")) r
+                else arrayOf("python", file.absolutePath)
+            }
             "js" -> arrayOf("node", file.absolutePath)
             "rb" -> arrayOf("ruby", file.absolutePath)
             "php" -> arrayOf("php", file.absolutePath)
             "pl" -> arrayOf("perl", file.absolutePath)
             "lua" -> arrayOf("lua", file.absolutePath)
-            else -> {
-                file.setExecutable(true)
-                arrayOf(file.absolutePath)
-            }
+            else -> { file.setExecutable(true); arrayOf(file.absolutePath) }
         }
+        return runProcess(runner, file.parentFile)
+    }
+
+    private fun runProcess(cmd: Array<String>, dir: File? = null): String {
         return try {
-            val process = ProcessBuilder(*runner)
-                .directory(file.parentFile)
-                .redirectErrorStream(true)
+            val pb = ProcessBuilder(*cmd)
                 .also { pb ->
+                    if (dir != null) pb.directory(dir)
+                    pb.redirectErrorStream(true)
                     pb.environment()["SETUP_DIR"] = setupRoot.absolutePath
-                    pb.environment()["SCRIPT_DIR"] = file.parent ?: setupRoot.absolutePath
                     pb.environment()["HOME"] = Environment.getExternalStorageDirectory().absolutePath
                 }
-                .start()
-            process.waitFor(30, TimeUnit.SECONDS)
-            process.inputStream.bufferedReader().readText().trim().ifEmpty { "(no output)" }
+            val proc = pb.start()
+            proc.waitFor(30, TimeUnit.SECONDS)
+            proc.inputStream.bufferedReader().readText().trim().ifEmpty { "(no output)" }
         } catch (e: Exception) {
-            "Error running script: ${e.message}\n\nMake sure the required runtime is installed."
+            "Error: ${e.message}\n\nHint: Make sure the runtime is installed (e.g. python3, node)."
         }
     }
 
     private fun setupButtons() {
         binding.btnNewScript.setOnClickListener { showNewScriptDialog() }
         binding.btnNewFolder.setOnClickListener { showNewFolderDialog() }
-        binding.btnHome.setOnClickListener {
-            dirHistory.clear()
-            loadDirectory(setupRoot)
-        }
+        binding.btnHome.setOnClickListener { dirHistory.clear(); loadDirectory(setupRoot) }
         binding.btnClearOutput.setOnClickListener { binding.tvOutput.text = "" }
     }
 
     private fun showNewScriptDialog() {
-        val templates = arrayOf(
-            "Shell script (.sh)",
-            "Python script (.py)",
-            "JavaScript / Node.js (.js)",
-            "PHP script (.php)",
-            "Plain text / config (.txt)",
-            "Empty file (custom name)"
-        )
+        val templates = arrayOf("Shell (.sh)", "Python (.py)", "JavaScript (.js)", "PHP (.php)", "HTML page (.html)", "Config (.txt/.yml)")
         AlertDialog.Builder(this)
-            .setTitle("New Script in: ${currentDir.name}/")
+            .setTitle("New file in ${currentDir.name}/")
             .setItems(templates) { _, which ->
                 val (ext, content) = when (which) {
-                    0 -> Pair("sh", "#!/bin/sh\n# My shell script\necho 'Hello from Discordia!'\n")
-                    1 -> Pair("py", "#!/usr/bin/env python3\n# My Python script\nprint('Hello from Discordia!')\n")
-                    2 -> Pair("js", "#!/usr/bin/env node\n// My Node.js script\nconsole.log('Hello from Discordia!');\n")
-                    3 -> Pair("php", "<?php\n// My PHP script\necho 'Hello from Discordia!' . PHP_EOL;\n")
-                    4 -> Pair("txt", "# My configuration\n\n")
-                    else -> Pair("", "")
+                    0 -> "sh" to "#!/bin/sh\n# My script\necho 'Hello from Discordia!'\n"
+                    1 -> "py" to "#!/usr/bin/env python3\nprint('Hello from Discordia!')\n"
+                    2 -> "js" to "#!/usr/bin/env node\nconsole.log('Hello from Discordia!');\n"
+                    3 -> "php" to "<?php\necho 'Hello from Discordia!' . PHP_EOL;\n"
+                    4 -> "html" to "<!DOCTYPE html>\n<html>\n<head><title>My Page</title>\n<style>body{background:#0d1117;color:#58a6ff;font-family:monospace;padding:40px;}</style>\n</head>\n<body><h1>My Page</h1><p>Created with Discordia Terminal.</p></body>\n</html>\n"
+                    5 -> "yml" to "# My configuration\n\nkey: value\n"
+                    else -> "txt" to ""
                 }
                 promptFileName(ext, content)
             }.show()
@@ -372,16 +244,14 @@ configuration scripts for repeatable setup tasks!
 
     private fun promptFileName(ext: String, defaultContent: String) {
         val input = android.widget.EditText(this).apply {
-            hint = if (ext.isEmpty()) "filename.ext" else "script.$ext"
+            hint = "filename.$ext"
             setTextColor(resources.getColor(R.color.text_primary, null))
         }
-        AlertDialog.Builder(this)
-            .setTitle("File name")
-            .setView(input)
+        AlertDialog.Builder(this).setTitle("File name").setView(input)
             .setPositiveButton("Create") { _, _ ->
                 var name = input.text.toString().trim()
                 if (name.isEmpty()) return@setPositiveButton
-                if (ext.isNotEmpty() && !name.contains('.')) name = "$name.$ext"
+                if (!name.contains('.')) name = "$name.$ext"
                 val file = File(currentDir, name)
                 try {
                     file.createNewFile()
@@ -392,9 +262,7 @@ configuration scripts for repeatable setup tasks!
                 } catch (e: Exception) {
                     Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                 }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            }.setNegativeButton("Cancel", null).show()
     }
 
     private fun showNewFolderDialog() {
@@ -402,31 +270,19 @@ configuration scripts for repeatable setup tasks!
             hint = "folder-name"
             setTextColor(resources.getColor(R.color.text_primary, null))
         }
-        AlertDialog.Builder(this)
-            .setTitle("New folder in ${currentDir.name}/")
-            .setView(input)
+        AlertDialog.Builder(this).setTitle("New folder").setView(input)
             .setPositiveButton("Create") { _, _ ->
                 val name = input.text.toString().trim()
-                if (name.isEmpty()) return@setPositiveButton
-                val dir = File(currentDir, name)
-                if (dir.mkdirs()) {
+                if (name.isNotEmpty() && File(currentDir, name).mkdirs()) {
                     loadDirectory(currentDir)
-                    Toast.makeText(this, "Folder created: $name", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Could not create folder", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Created: $name/", Toast.LENGTH_SHORT).show()
                 }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            }.setNegativeButton("Cancel", null).show()
     }
 
     override fun onBackPressed() {
-        if (dirHistory.isNotEmpty()) {
-            currentDir = dirHistory.removeLast()
-            loadDirectory(currentDir)
-        } else {
-            super.onBackPressed()
-        }
+        if (dirHistory.isNotEmpty()) { currentDir = dirHistory.removeLast(); loadDirectory(currentDir) }
+        else super.onBackPressed()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {

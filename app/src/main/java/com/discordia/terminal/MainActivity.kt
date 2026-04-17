@@ -2,9 +2,7 @@ package com.discordia.terminal
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
-import android.widget.Toast
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.discordia.terminal.databinding.ActivityMainBinding
 
@@ -17,39 +15,43 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
-        setupClickListeners()
+        supportActionBar?.title = "DISCORDIA TERMINAL"
+
+        SoundManager.init(this)
+        SoundManager.playStartup()
+
+        setupCards()
     }
 
-    private fun setupClickListeners() {
+    private fun setupCards() {
         binding.cardTerminal.setOnClickListener {
+            SoundManager.playClick()
             startActivity(Intent(this, TerminalActivity::class.java))
         }
-        binding.cardFileManager.setOnClickListener {
+        binding.cardFiles.setOnClickListener {
+            SoundManager.playClick()
             startActivity(Intent(this, FileManagerActivity::class.java))
         }
         binding.cardServer.setOnClickListener {
+            SoundManager.playClick()
             startActivity(Intent(this, ServerActivity::class.java))
         }
-        binding.cardBuilder.setOnClickListener {
-            startActivity(Intent(this, ProjectBuilderActivity::class.java))
+        binding.cardMods.setOnClickListener {
+            SoundManager.playClick()
+            startActivity(Intent(this, ModBuilderActivity::class.java))
         }
         binding.cardSetup.setOnClickListener {
+            SoundManager.playClick()
             startActivity(Intent(this, SetupActivity::class.java))
         }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_about -> {
-                Toast.makeText(this, "Discordia Terminal v1.0 — SM-X200 Edition", Toast.LENGTH_LONG).show()
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
+        binding.cardWorkflows.setOnClickListener {
+            SoundManager.playClick()
+            startActivity(Intent(this, WorkflowBuilderActivity::class.java))
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        SoundManager.release()
     }
 }

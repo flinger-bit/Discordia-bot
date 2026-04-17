@@ -3,15 +3,25 @@
     <color name="terminal_bg">#0D1117</color>
     <color name="surface_dark">#161B22</color>
     <color name="surface_medium">#21262D</color>
-    <color name="text_primary">#E6EDF3</color>
+    <color name="terminal_text">#E6EDF3</color>
+    <color name="text_primary">#C9D1D9</color>
     <color name="text_secondary">#8B949E</color>
-    <color name="terminal_text">#C9D1D9</color>
-    <color name="accent_blue">#58A6FF</color>
+
     <color name="accent_green">#3FB950</color>
-    <color name="accent_yellow">#D29922</color>
+    <color name="accent_blue">#58A6FF</color>
     <color name="accent_purple">#BC8CFF</color>
+    <color name="accent_orange">#D29922</color>
     <color name="accent_red">#F85149</color>
-    <color name="accent_orange">#E3B341</color>
+    <color name="accent_cyan">#39D353</color>
+    <color name="accent_yellow">#E3B341</color>
+    <color name="accent_pink">#F778BA</color>
+
+    <!-- Material compat -->
+    <color name="purple_200">#BC8CFF</color>
+    <color name="purple_500">#8A2BE2</color>
+    <color name="purple_700">#6A0DAD</color>
+    <color name="teal_200">#3FB950</color>
+    <color name="teal_700">#2E8B57</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

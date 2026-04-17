@@ -37,14 +37,10 @@ class ShellEngine {
     suspend fun execute(input: String): String = withContext(Dispatchers.IO) {
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return@withContext ""
-
         addToHistory(trimmed)
-
-        // Handle built-in commands
         val parts = trimmed.split("\\s+".toRegex())
         val cmd = parts[0]
         val args = parts.drop(1)
-
         when (cmd) {
             "cd" -> handleCd(args)
             "pwd" -> currentDirectory.absolutePath
@@ -93,14 +89,18 @@ class ShellEngine {
     private fun handleLs(args: List<String>): String {
         val showAll = args.contains("-a") || args.contains("-la") || args.contains("-al")
         val longFormat = args.contains("-l") || args.contains("-la") || args.contains("-al")
-        val dir = args.lastOrNull { !it.startsWith("-") }?.let {
-            if (it.startsWith("/")) File(it) else File(currentDirectory, it)
-        } ?: currentDirectory
+        val dirPath = args.lastOrNull { !it.startsWith("-") }
+        val dir: File = if (dirPath != null) {
+            if (dirPath.startsWith("/")) File(dirPath) else File(currentDirectory, dirPath)
+        } else {
+            currentDirectory
+        }
 
         if (!dir.exists()) return "ls: cannot access '${dir.absolutePath}': No such file or directory"
-        val files = dir.listFiles()?.let { list ->
-            if (showAll) list else list.filter { !it.name.startsWith(".") }
-        }?.sortedWith(compareBy({ !it.isDirectory }, { it.name })) ?: emptyList()
+        val rawFiles: Array<File> = dir.listFiles() ?: return "(empty)"
+        val fileList: List<File> = rawFiles.toList()
+        val filtered: List<File> = if (showAll) fileList else fileList.filter { !it.name.startsWith(".") }
+        val files: List<File> = filtered.sortedWith(compareBy<File> { !it.isDirectory }.thenBy { it.name })
 
         return if (longFormat) {
             files.joinToString("\n") { f ->
@@ -109,8 +109,8 @@ class ShellEngine {
                 "$type ${size}  ${f.name}${if (f.isDirectory) "/" else ""}"
             }
         } else {
-            files.chunked(4).joinToString("\n") { row ->
-                row.joinToString("  ") { f ->
+            files.chunked(4).joinToString("\n") { row: List<File> ->
+                row.joinToString("  ") { f: File ->
                     val name = f.name + if (f.isDirectory) "/" else ""
                     name.padEnd(20)
                 }
@@ -124,7 +124,9 @@ class ShellEngine {
             val f = if (name.startsWith("/")) File(name) else File(currentDirectory, name)
             if (f.exists() && f.isFile) {
                 try { f.readText() } catch (e: Exception) { "cat: $name: Permission denied" }
-            } else "cat: $name: No such file or directory"
+            } else {
+                "cat: $name: No such file or directory"
+            }
         }
     }
 
@@ -135,15 +137,15 @@ class ShellEngine {
         return dirs.joinToString("\n") { name ->
             val f = if (name.startsWith("/")) File(name) else File(currentDirectory, name)
             val success = if (recursive) f.mkdirs() else f.mkdir()
-            if (!success && f.exists()) "" else if (!success) "mkdir: cannot create directory '$name'" else ""
+            if (!success && !f.exists()) "mkdir: cannot create directory '$name'" else ""
         }.trim()
     }
 
     private fun handleRm(args: List<String>): String {
         if (args.isEmpty()) return "rm: missing operand"
-        val recursive = args.contains("-r") || args.contains("-rf") || args.contains("-fr")
-        val files = args.filter { !it.startsWith("-") }
-        return files.joinToString("\n") { name ->
+        val recursive = args.any { it.startsWith("-") && it.contains("r") }
+        val fileNames = args.filter { !it.startsWith("-") }
+        return fileNames.joinToString("\n") { name ->
             val f = if (name.startsWith("/")) File(name) else File(currentDirectory, name)
             if (!f.exists()) return@joinToString "rm: cannot remove '$name': No such file"
             val deleted = if (recursive && f.isDirectory) f.deleteRecursively() else f.delete()
@@ -161,21 +163,25 @@ class ShellEngine {
 
     private fun handleCp(args: List<String>): String {
         if (args.size < 2) return "cp: missing file operand"
-        val src = File(if (args[0].startsWith("/")) args[0] else "${currentDirectory}/${args[0]}")
-        val dst = File(if (args[1].startsWith("/")) args[1] else "${currentDirectory}/${args[1]}")
+        val srcPath = args[0]
+        val dstPath = args[1]
+        val src = if (srcPath.startsWith("/")) File(srcPath) else File(currentDirectory, srcPath)
+        val dst = if (dstPath.startsWith("/")) File(dstPath) else File(currentDirectory, dstPath)
         return try { src.copyTo(dst, overwrite = true); "" } catch (e: Exception) { "cp: ${e.message}" }
     }
 
     private fun handleMv(args: List<String>): String {
         if (args.size < 2) return "mv: missing file operand"
-        val src = File(if (args[0].startsWith("/")) args[0] else "${currentDirectory}/${args[0]}")
-        val dst = File(if (args[1].startsWith("/")) args[1] else "${currentDirectory}/${args[1]}")
-        return try { src.renameTo(dst); "" } catch (e: Exception) { "mv: ${e.message}" }
+        val srcPath = args[0]
+        val dstPath = args[1]
+        val src = if (srcPath.startsWith("/")) File(srcPath) else File(currentDirectory, srcPath)
+        val dst = if (dstPath.startsWith("/")) File(dstPath) else File(currentDirectory, dstPath)
+        return if (src.renameTo(dst)) "" else "mv: cannot move '$srcPath' to '$dstPath'"
     }
 
     private fun handleFind(args: List<String>): String {
-        val path = args.firstOrNull() ?: "."
-        val dir = if (path.startsWith("/")) File(path) else File(currentDirectory, path)
+        val pathStr = args.firstOrNull() ?: "."
+        val dir = if (pathStr.startsWith("/")) File(pathStr) else File(currentDirectory, pathStr)
         return try {
             dir.walkTopDown().take(200).joinToString("\n") { it.absolutePath }
         } catch (e: Exception) { "find: ${e.message}" }
@@ -184,7 +190,8 @@ class ShellEngine {
     private fun handleGrep(args: List<String>): String {
         if (args.size < 2) return "grep: missing pattern or file"
         val pattern = args[0]
-        val file = File(if (args[1].startsWith("/")) args[1] else "${currentDirectory}/${args[1]}")
+        val filePath = args[1]
+        val file = if (filePath.startsWith("/")) File(filePath) else File(currentDirectory, filePath)
         return try {
             val regex = Regex(pattern)
             file.readLines().mapIndexed { i, line ->
@@ -203,12 +210,13 @@ class ShellEngine {
         val total = root.totalSpace / (1024 * 1024)
         val free = root.freeSpace / (1024 * 1024)
         val used = total - free
-        return "Filesystem         Size  Used  Avail  Use%  Mounted on\n/sdcard         ${total}M  ${used}M  ${free}M   ${if(total>0)(used*100/total) else 0}%  /sdcard"
+        val pct = if (total > 0) (used * 100 / total) else 0
+        return "Filesystem        Size   Used  Avail  Use%  Mounted on\n/sdcard        ${total}M  ${used}M  ${free}M   $pct%  /sdcard"
     }
 
     private fun handleDu(args: List<String>): String {
-        val path = args.firstOrNull { !it.startsWith("-") } ?: "."
-        val f = if (path.startsWith("/")) File(path) else File(currentDirectory, path)
+        val pathStr = args.firstOrNull { !it.startsWith("-") } ?: "."
+        val f = if (pathStr.startsWith("/")) File(pathStr) else File(currentDirectory, pathStr)
         val size = f.walkTopDown().filter { it.isFile }.sumOf { it.length() } / 1024
         return "$size\t${f.absolutePath}"
     }
@@ -235,6 +243,5 @@ Discordia Terminal — Available Commands:
   Session:      history, clear, help, exit
   
 Any other command is executed via the Android shell.
-Type a command and press Enter or tap [EXEC].
     """.trimIndent()
 }

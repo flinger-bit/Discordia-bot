@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/terminal_bg">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface_dark"
+            app:titleTextColor="@color/accent_blue"
+            app:title="Discordia Terminal"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Samsung SM-X200 • Android 14"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="monospace"
+                android:textSize="12sp"
+                android:layout_marginBottom="24dp"/>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardTerminal"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/surface_dark"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                    android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <TextView android:layout_width="56dp" android:layout_height="56dp"
+                        android:text="&#xE86C;" android:fontFamily="sans-serif" android:textSize="36sp"
+                        android:textColor="@color/accent_green" android:gravity="center"/>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Terminal" android:textColor="@color/text_primary"
+                            android:textSize="18sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Full shell access • run commands • scripts"
+                            android:textColor="@color/text_secondary" android:textSize="12sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardFileManager"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/surface_dark"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                    android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <TextView android:layout_width="56dp" android:layout_height="56dp"
+                        android:text="&#xE2C7;" android:fontFamily="sans-serif" android:textSize="36sp"
+                        android:textColor="@color/accent_yellow" android:gravity="center"/>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="File Manager" android:textColor="@color/text_primary"
+                            android:textSize="18sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Browse all files • open • share • manage"
+                            android:textColor="@color/text_secondary" android:textSize="12sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardServer"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/surface_dark"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                    android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <TextView android:layout_width="56dp" android:layout_height="56dp"
+                        android:text="&#xE894;" android:fontFamily="sans-serif" android:textSize="36sp"
+                        android:textColor="@color/accent_blue" android:gravity="center"/>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Local Server" android:textColor="@color/text_primary"
+                            android:textSize="18sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="HTTP server • browse files over WiFi"
+                            android:textColor="@color/text_secondary" android:textSize="12sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardBuilder"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_marginBottom="12dp"
+                app:cardBackgroundColor="@color/surface_dark"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
+                    android:orientation="horizontal" android:padding="16dp" android:gravity="center_vertical">
+                    <TextView android:layout_width="56dp" android:layout_height="56dp"
+                        android:text="&#xE1B8;" android:fontFamily="sans-serif" android:textSize="36sp"
+                        android:textColor="@color/accent_purple" android:gravity="center"/>
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="12dp">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Project Builder" android:textColor="@color/text_primary"
+                            android:textSize="18sp" android:textStyle="bold"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Minecraft mods • Android apps • Web projects"
+                            android:textColor="@color/text_secondary" android:textSize="12sp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

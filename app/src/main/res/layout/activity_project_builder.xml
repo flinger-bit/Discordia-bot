@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/terminal_bg">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface_dark"
+            app:titleTextColor="@color/accent_purple"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etProjectName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Project / Mod Name"
+                    android:textColor="@color/text_primary"
+                    android:inputType="text"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MINECRAFT"
+                android:textColor="@color/accent_green"
+                android:fontFamily="monospace"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"/>
+
+            <Button
+                android:id="@+id/btnMinecraftJava"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="⚒ Minecraft Java Mod (Forge 1.20.1)"
+                android:backgroundTint="@color/accent_green"
+                android:textColor="@color/terminal_bg"/>
+
+            <Button
+                android:id="@+id/btnMinecraftBedrock"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="🎮 Minecraft Bedrock Addon"
+                android:backgroundTint="@color/accent_green"
+                android:textColor="@color/terminal_bg"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DEVELOPMENT"
+                android:textColor="@color/accent_blue"
+                android:fontFamily="monospace"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="8dp"/>
+
+            <Button
+                android:id="@+id/btnAndroidApp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="📱 Android App Template"
+                android:backgroundTint="@color/accent_blue"
+                android:textColor="@color/terminal_bg"/>
+
+            <Button
+                android:id="@+id/btnWebProject"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="🌐 Web Project (HTML/CSS/JS)"
+                android:backgroundTint="@color/accent_blue"
+                android:textColor="@color/terminal_bg"/>
+
+            <Button
+                android:id="@+id/btnShellScript"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="📜 Shell Script"
+                android:backgroundTint="@color/accent_purple"
+                android:textColor="@color/terminal_bg"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OUTPUT"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="monospace"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/tvOutput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Select a template above to create a project."
+                android:textColor="@color/terminal_text"
+                android:fontFamily="monospace"
+                android:textSize="12sp"
+                android:padding="12dp"
+                android:background="@color/surface_dark"
+                android:textIsSelectable="true"/>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

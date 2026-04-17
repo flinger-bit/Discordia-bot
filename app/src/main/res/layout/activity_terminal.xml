@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/terminal_bg">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface_dark"
+            app:titleTextColor="@color/accent_green"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Toolbar row for quick buttons -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_dark"
+        android:scrollbars="none">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
+            <Button android:id="@+id/btnCtrlC" style="@style/QuickButton" android:text="Ctrl+C"/>
+            <Button android:id="@+id/btnTab" style="@style/QuickButton" android:text="Tab"/>
+            <Button android:id="@+id/btnClear" style="@style/QuickButton" android:text="Clear"/>
+            <Button android:id="@+id/btnCopy" style="@style/QuickButton" android:text="Copy"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Terminal output -->
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:padding="8dp">
+        <TextView
+            android:id="@+id/tvOutput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/terminal_text"
+            android:textSize="13sp"
+            android:fontFamily="monospace"
+            android:lineSpacingExtra="2dp"
+            android:textIsSelectable="true"/>
+    </ScrollView>
+
+    <!-- Input row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/surface_dark"
+        android:padding="4dp">
+
+        <TextView
+            android:id="@+id/tvPrompt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/accent_green"
+            android:fontFamily="monospace"
+            android:textSize="12sp"
+            android:paddingStart="4dp"
+            android:paddingBottom="2dp"
+            android:text="discordia@SM-X200:~$"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <EditText
+                android:id="@+id/etInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Enter command..."
+                android:textColor="@color/terminal_text"
+                android:textColorHint="@color/text_secondary"
+                android:fontFamily="monospace"
+                android:textSize="13sp"
+                android:background="@null"
+                android:imeOptions="actionDone"
+                android:inputType="text|textNoSuggestions"
+                android:maxLines="1"
+                android:paddingStart="4dp"/>
+            <Button
+                android:id="@+id/btnExec"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="EXEC"
+                android:textColor="@color/terminal_bg"
+                android:backgroundTint="@color/accent_green"
+                android:textSize="11sp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

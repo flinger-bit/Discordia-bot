@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Discordia Terminal</string>
+    <string name="terminal">Terminal</string>
+    <string name="file_manager">File Manager</string>
+    <string name="local_server">Local Server</string>
+    <string name="project_builder">Project Builder</string>
+    <string name="permission_rationale">Discordia Terminal needs access to all files to function as a full terminal. Please grant "All files access" in the next screen.</string>
+    <string name="start_server">Start Server</string>
+    <string name="stop_server">Stop Server</string>
+</resources>

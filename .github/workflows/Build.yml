@@ -1,1 +1,83 @@
+name: Build Discordia Terminal APK
 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.7'
+
+      - name: Grant execute permissions for gradlew
+        run: chmod +x gradlew
+        continue-on-error: true
+
+      - name: Download Gradle Wrapper JAR
+        run: |
+          mkdir -p gradle/wrapper
+          curl -L -o gradle/wrapper/gradle-wrapper.jar \
+            https://github.com/gradle/gradle/raw/v8.7.0/gradle/wrapper/gradle-wrapper.jar
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build Debug APK
+        run: gradle assembleDebug
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Sign Release APK (Debug Keystore)
+        run: |
+          gradle assembleRelease || true
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: discordia-terminal-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload Release APK (if built)
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: discordia-terminal-release.apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: ignore
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "app/build/outputs/apk/debug/app-debug.apk" ]; then
+            APK_SIZE=$(du -sh app/build/outputs/apk/debug/app-debug.apk | cut -f1)
+            echo "✅ Debug APK built successfully — Size: $APK_SIZE" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Debug APK build failed" >> $GITHUB_STEP_SUMMARY
+          fi

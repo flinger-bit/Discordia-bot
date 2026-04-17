@@ -4,17 +4,16 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- D letter / terminal symbol -->
     <path
         android:fillColor="#3FB950"
-        android:pathData="M20,70 L20,30 L30,30 L50,55 L70,30 L80,30 L80,70 L70,70 L70,48 L52,70 L48,70 L30,48 L30,70 Z"/>
+        android:pathData="M22,70 L22,30 L32,30 L52,55 L72,30 L82,30 L82,70 L72,70 L72,48 L54,70 L50,70 L32,48 L32,70 Z"/>
+    <!-- Blue underline accent -->
     <path
         android:fillColor="#58A6FF"
-        android:pathData="M20,78 L80,78 L80,82 L20,82 Z"/>
-    <rect
+        android:pathData="M22,76 L82,76 L82,80 L22,80 Z"/>
+    <!-- Green bottom bar -->
+    <path
         android:fillColor="#3FB950"
-        android:x="20"
-        android:y="86"
-        android:width="60"
-        android:height="4"
-        android:rx="2"/>
+        android:pathData="M22,84 Q24,84 24,86 L24,88 Q24,90 22,90 L82,90 Q80,90 80,88 L80,86 Q80,84 82,84 Z"/>
 </vector>

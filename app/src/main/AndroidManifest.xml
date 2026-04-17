@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- File System Access -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
@@ -12,13 +11,9 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-
-    <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-
-    <!-- Background & Foreground Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
@@ -47,40 +42,27 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DiscordiaTerminal"
-            android:screenOrientation="unspecified"/>
+        <activity android:name=".MainActivity" android:exported="false"
+            android:theme="@style/Theme.DiscordiaTerminal" android:screenOrientation="unspecified"/>
 
-        <activity
-            android:name=".TerminalActivity"
-            android:exported="false"
+        <activity android:name=".TerminalActivity" android:exported="false"
             android:theme="@style/Theme.DiscordiaTerminal.Terminal"
             android:screenOrientation="unspecified"
             android:windowSoftInputMode="adjustResize"/>
 
-        <activity
-            android:name=".FileManagerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DiscordiaTerminal"
-            android:screenOrientation="unspecified"/>
+        <activity android:name=".FileManagerActivity" android:exported="false"
+            android:theme="@style/Theme.DiscordiaTerminal" android:screenOrientation="unspecified"/>
 
-        <activity
-            android:name=".ServerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DiscordiaTerminal"
-            android:screenOrientation="unspecified"/>
+        <activity android:name=".ServerActivity" android:exported="false"
+            android:theme="@style/Theme.DiscordiaTerminal" android:screenOrientation="unspecified"/>
 
-        <activity
-            android:name=".ProjectBuilderActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DiscordiaTerminal"
-            android:screenOrientation="unspecified"/>
+        <activity android:name=".ProjectBuilderActivity" android:exported="false"
+            android:theme="@style/Theme.DiscordiaTerminal" android:screenOrientation="unspecified"/>
 
-        <service
-            android:name=".ServerForegroundService"
-            android:exported="false"
+        <activity android:name=".SetupActivity" android:exported="false"
+            android:theme="@style/Theme.DiscordiaTerminal" android:screenOrientation="unspecified"/>
+
+        <service android:name=".ServerForegroundService" android:exported="false"
             android:foregroundServiceType="dataSync"/>
 
     </application>

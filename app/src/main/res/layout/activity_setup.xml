@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/terminal_bg">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface_dark"
+            app:titleTextColor="@color/accent_orange"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <!-- Path + action buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_dark"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvPath"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="DiscordiaSetup/"
+            android:textColor="@color/accent_orange"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:ellipsize="start"/>
+
+        <TextView
+            android:id="@+id/tvFileCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 items"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp"
+            android:paddingEnd="6dp"/>
+    </LinearLayout>
+
+    <!-- Quick action buttons row -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_dark"
+        android:scrollbars="none"
+        android:paddingBottom="4dp">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:orientation="horizontal"
+            android:paddingStart="4dp">
+
+            <Button
+                android:id="@+id/btnNewScript"
+                style="@style/QuickButton"
+                android:text="+ Script"
+                android:textColor="@color/accent_green"/>
+
+            <Button
+                android:id="@+id/btnNewFolder"
+                style="@style/QuickButton"
+                android:text="+ Folder"
+                android:textColor="@color/accent_yellow"/>
+
+            <Button
+                android:id="@+id/btnHome"
+                style="@style/QuickButton"
+                android:text="⌂ Home"
+                android:textColor="@color/accent_orange"/>
+
+            <Button
+                android:id="@+id/btnClearOutput"
+                style="@style/QuickButton"
+                android:text="Clear Output"
+                android:textColor="@color/text_secondary"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- File list (top half) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvScripts"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@null"/>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/surface_medium"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="OUTPUT"
+        android:textColor="@color/text_secondary"
+        android:fontFamily="monospace"
+        android:textSize="10sp"
+        android:letterSpacing="0.1"
+        android:padding="6dp"
+        android:background="@color/surface_dark"/>
+
+    <!-- Script output (bottom half) -->
+    <ScrollView
+        android:id="@+id/scrollOutput"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp">
+        <TextView
+            android:id="@+id/tvOutput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tap a script to run it. Output appears here."
+            android:textColor="@color/terminal_text"
+            android:textSize="12sp"
+            android:textIsSelectable="true"/>
+    </ScrollView>
+
+</LinearLayout>

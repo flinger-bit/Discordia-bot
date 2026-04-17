@@ -33,6 +33,9 @@ class MainActivity : AppCompatActivity() {
         binding.cardBuilder.setOnClickListener {
             startActivity(Intent(this, ProjectBuilderActivity::class.java))
         }
+        binding.cardSetup.setOnClickListener {
+            startActivity(Intent(this, SetupActivity::class.java))
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {

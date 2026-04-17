@@ -452,9 +452,9 @@ jobs:
       - name: Package addon
         run: |
           mkdir -p dist
-          ADDON_NAME=$(basename "$PWD")
-          zip -r "dist/${ADDON_NAME}.mcaddon" behavior_pack/ resource_pack/ 2>/dev/null || \
-          zip -r "dist/${ADDON_NAME}.mcpack" . --exclude dist/\* .git/\*
+          ADDON_NAME=${'$'}(basename "${'$'}(pwd)")
+          zip -r "dist/${'$'}{ADDON_NAME}.mcaddon" behavior_pack/ resource_pack/ 2>/dev/null || \
+          zip -r "dist/${'$'}{ADDON_NAME}.mcpack" . --exclude dist/\* .git/\*
           ls -la dist/
       - uses: actions/upload-artifact@v4
         with:
@@ -520,7 +520,7 @@ jobs:
       - name: Configure FFmpeg
         run: |
           cd ffmpeg-src
-          ./configure --enable-gpl --enable-nonfree --enable-libx264 --enable-libvpx --enable-libopus --enable-libmp3lame --prefix=$PWD/../ffmpeg-out
+          ./configure --enable-gpl --enable-nonfree --enable-libx264 --enable-libvpx --enable-libopus --enable-libmp3lame --prefix=${'$'}(pwd)/../ffmpeg-out
       - name: Build FFmpeg
         run: cd ffmpeg-src && make -j$(nproc) && make install
       - uses: actions/upload-artifact@v4

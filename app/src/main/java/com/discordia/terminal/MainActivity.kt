@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.cardMods.setOnClickListener {
             SoundManager.playClick()
-            startActivity(Intent(this, ModBuilderActivity::class.java))
+            startActivity(Intent(this, ProjectBuilderActivity::class.java))
         }
         binding.cardSetup.setOnClickListener {
             SoundManager.playClick()

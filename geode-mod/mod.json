@@ -1,0 +1,89 @@
+{
+  "geode": "5.6.1",
+  "gd": {
+    "win": "2.2081",
+    "android": "2.2081",
+    "mac": "2.2081"
+  },
+  "id": "flinger-bit.xdbot-rework",
+  "name": "XDBot Rework",
+  "version": "1.0.0",
+  "developer": "flinger-bit",
+  "description": "A complete rework of XDBot — frame-accurate macro recorder, replayer, and utility mod for GD 2.2081.",
+  "tags": ["bot", "macro", "utility", "gameplay"],
+  "links": {
+    "source": "https://github.com/flinger-bit/Discordia-bot"
+  },
+  "settings": {
+    "noclip": {
+      "name": "Noclip",
+      "description": "Pass through all objects without dying.",
+      "type": "bool",
+      "default": false
+    },
+    "auto-respawn": {
+      "name": "Auto Respawn",
+      "description": "Automatically restart the level after dying.",
+      "type": "bool",
+      "default": false
+    },
+    "auto-respawn-delay": {
+      "name": "Auto Respawn Delay (s)",
+      "description": "Seconds to wait before auto-respawning.",
+      "type": "float",
+      "default": 0.5,
+      "min": 0.0,
+      "max": 5.0,
+      "control": {
+        "arrows": true,
+        "arrow-step": 0.1,
+        "big-arrows": true,
+        "big-arrow-step": 0.5,
+        "slider": true,
+        "slider-step": 0.1,
+        "input": true
+      }
+    },
+    "speedhack": {
+      "name": "Speedhack",
+      "description": "Modify game speed during play.",
+      "type": "bool",
+      "default": false
+    },
+    "speedhack-value": {
+      "name": "Speedhack Multiplier",
+      "description": "Speed multiplier (1.0 = normal).",
+      "type": "float",
+      "default": 1.0,
+      "min": 0.1,
+      "max": 10.0,
+      "control": {
+        "arrows": true,
+        "arrow-step": 0.1,
+        "big-arrows": true,
+        "big-arrow-step": 0.5,
+        "slider": true,
+        "slider-step": 0.1,
+        "input": true
+      }
+    },
+    "show-overlay": {
+      "name": "Show Bot Overlay",
+      "description": "Display bot state and frame count on screen while playing.",
+      "type": "bool",
+      "default": true
+    },
+    "show-hitboxes": {
+      "name": "Show Hitboxes (Practice)",
+      "description": "Show object hitboxes while in practice mode.",
+      "type": "bool",
+      "default": false
+    },
+    "frame-step-key": {
+      "name": "Frame Step Mode",
+      "description": "Pause playback and step one frame at a time (press N in-game).",
+      "type": "bool",
+      "default": false
+    }
+  }
+}

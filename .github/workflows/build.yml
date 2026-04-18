@@ -1,0 +1,58 @@
+name: Build XDBot Rework
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "geode-mod/**"
+      - ".github/workflows/build.yml"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: Windows
+            os: windows-latest
+            build-type: RelWithDebInfo
+
+          - name: Android32
+            os: ubuntu-latest
+            target: Android32
+
+          - name: Android64
+            os: ubuntu-latest
+            target: Android64
+
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          sdk: v5.6.1
+          working-directory: geode-mod
+          build-config: ${{ matrix.config.build-type || 'Release' }}
+          target: ${{ matrix.config.target }}
+          combine: true
+          export-pdb: true
+
+  package:
+    name: Package .geode
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    steps:
+      - uses: geode-sdk/build-geode-mod/combine@main
+        id: build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flinger-bit.xdbot-rework.geode
+          path: ${{ steps.build.outputs.build-output }}

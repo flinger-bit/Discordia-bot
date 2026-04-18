@@ -1,5 +1,6 @@
 package com.discordia.terminal
 
+import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -64,6 +65,51 @@ class ShellEngine {
             "df" -> handleDf()
             "du" -> handleDu(args)
             "env" -> System.getenv().entries.joinToString("\n") { "${it.key}=${it.value}" }
+            "head" -> handleHead(args)
+            "tail" -> handleTail(args)
+            "wc" -> handleWc(args)
+            "sort" -> handleSort(args)
+            "uniq" -> handleUniq(args)
+            "cut" -> executeShellCommand(trimmed)
+            "awk" -> executeShellCommand(trimmed)
+            "sed" -> executeShellCommand(trimmed)
+            "chmod" -> executeShellCommand(trimmed)
+            "ps" -> executeShellCommand("ps -A 2>/dev/null || ps")
+            "kill" -> executeShellCommand(trimmed)
+            "top" -> executeShellCommand("top -n 1 -b 2>/dev/null | head -30")
+            "free" -> handleFree()
+            "ifconfig" -> executeShellCommand("ifconfig 2>/dev/null || ip addr")
+            "ip" -> executeShellCommand(trimmed)
+            "ping" -> executeShellCommand(trimmed)
+            "curl" -> executeShellCommand(trimmed)
+            "wget" -> executeShellCommand(trimmed)
+            "tar" -> executeShellCommand(trimmed)
+            "zip" -> executeShellCommand(trimmed)
+            "unzip" -> executeShellCommand(trimmed)
+            "which" -> handleWhich(args)
+            "diff" -> handleDiff(args)
+            "ln" -> executeShellCommand(trimmed)
+            "stat" -> handleStat(args)
+            "file" -> handleFileType(args)
+            "less", "more" -> handleCat(args)
+            "printf" -> args.joinToString(" ").replace("\\n", "\n").replace("\\t", "\t")
+            "set", "export" -> handleSet(args)
+            "source", "." -> handleSource(args)
+            "alias" -> handleAlias(args, trimmed)
+            "basename" -> args.lastOrNull()?.let { File(it).name } ?: "basename: missing operand"
+            "dirname" -> args.lastOrNull()?.let { File(it).parent ?: "." } ?: "dirname: missing operand"
+            "realpath" -> args.firstOrNull()?.let { p -> if (p.startsWith("/")) p else "${currentDirectory.absolutePath}/$p" } ?: ""
+            "yes" -> "(output suppressed — infinite loop prevented)"
+            "nano", "vi", "vim" -> "Use the Code Editor for editing files! (tap IDE card)"
+            "python3", "python" -> if (args.isEmpty()) "Python 3 interactive mode not available in app — run scripts via Setup Folder" else executeShellCommand(trimmed)
+            "node", "nodejs" -> if (args.isEmpty()) "Node.js interactive mode not available in app — run scripts via Setup Folder" else executeShellCommand(trimmed)
+            "npm" -> executeShellCommand(trimmed)
+            "git" -> executeShellCommand(trimmed)
+            "sh", "bash" -> executeShellCommand(trimmed)
+            "open" -> "open: use File Manager or IDE to open files"
+            "sysinfo" -> handleSysinfo()
+            "diskinfo" -> handleDiskInfo()
+            "netinfo" -> handleNetInfo()
             "exit" -> "exit"
             else -> executeShellCommand(trimmed)
         }
@@ -235,13 +281,196 @@ class ShellEngine {
         }
     }
 
+    private fun handleHead(args: List<String>): String {
+        val n = if (args.contains("-n")) args.getOrNull(args.indexOf("-n") + 1)?.toIntOrNull() ?: 10 else 10
+        val fileArg = args.firstOrNull { !it.startsWith("-") && it != args.getOrNull(args.indexOf("-n") + 1) }
+        val f = if (fileArg != null) { if (fileArg.startsWith("/")) File(fileArg) else File(currentDirectory, fileArg) } else return "head: missing file"
+        return try { f.readLines().take(n).joinToString("\n") } catch (e: Exception) { "head: ${e.message}" }
+    }
+
+    private fun handleTail(args: List<String>): String {
+        val n = if (args.contains("-n")) args.getOrNull(args.indexOf("-n") + 1)?.toIntOrNull() ?: 10 else 10
+        val fileArg = args.firstOrNull { !it.startsWith("-") && it != args.getOrNull(args.indexOf("-n") + 1) }
+        val f = if (fileArg != null) { if (fileArg.startsWith("/")) File(fileArg) else File(currentDirectory, fileArg) } else return "tail: missing file"
+        return try { f.readLines().takeLast(n).joinToString("\n") } catch (e: Exception) { "tail: ${e.message}" }
+    }
+
+    private fun handleWc(args: List<String>): String {
+        val fileArg = args.firstOrNull { !it.startsWith("-") } ?: return "wc: missing file"
+        val f = if (fileArg.startsWith("/")) File(fileArg) else File(currentDirectory, fileArg)
+        return try {
+            val content = f.readText()
+            val lines = content.lines().size
+            val words = content.split("\\s+".toRegex()).filter { it.isNotEmpty() }.size
+            val chars = content.length
+            "  $lines  $words  $chars $fileArg"
+        } catch (e: Exception) { "wc: ${e.message}" }
+    }
+
+    private fun handleSort(args: List<String>): String {
+        val fileArg = args.firstOrNull { !it.startsWith("-") } ?: return "sort: missing file"
+        val reverse = args.contains("-r")
+        val f = if (fileArg.startsWith("/")) File(fileArg) else File(currentDirectory, fileArg)
+        return try {
+            val lines = f.readLines()
+            (if (reverse) lines.sortedDescending() else lines.sorted()).joinToString("\n")
+        } catch (e: Exception) { "sort: ${e.message}" }
+    }
+
+    private fun handleUniq(args: List<String>): String {
+        val fileArg = args.firstOrNull { !it.startsWith("-") } ?: return "uniq: missing file"
+        val f = if (fileArg.startsWith("/")) File(fileArg) else File(currentDirectory, fileArg)
+        return try { f.readLines().distinct().joinToString("\n") } catch (e: Exception) { "uniq: ${e.message}" }
+    }
+
+    private fun handleFree(): String {
+        val rt = Runtime.getRuntime()
+        val maxMb = rt.maxMemory() / (1024 * 1024)
+        val totalMb = rt.totalMemory() / (1024 * 1024)
+        val freeMb = rt.freeMemory() / (1024 * 1024)
+        val usedMb = totalMb - freeMb
+        return "              total        used        free\nMem:          ${maxMb}M       ${usedMb}M       ${freeMb}M"
+    }
+
+    private fun handleWhich(args: List<String>): String {
+        if (args.isEmpty()) return "which: missing argument"
+        val paths = listOf("/system/bin", "/system/xbin", "/sbin", "/vendor/bin")
+        return args.joinToString("\n") { cmd ->
+            paths.firstOrNull { File("$it/$cmd").exists() }?.let { "$it/$cmd" } ?: "$cmd: not found"
+        }
+    }
+
+    private fun handleDiff(args: List<String>): String {
+        if (args.size < 2) return "diff: missing files"
+        val f1 = if (args[0].startsWith("/")) File(args[0]) else File(currentDirectory, args[0])
+        val f2 = if (args[1].startsWith("/")) File(args[1]) else File(currentDirectory, args[1])
+        return try {
+            val l1 = f1.readLines(); val l2 = f2.readLines()
+            val sb = StringBuilder()
+            l1.forEachIndexed { i, line ->
+                val l2line = l2.getOrNull(i)
+                if (line != l2line) { sb.append("< $line\n"); if (l2line != null) sb.append("> $l2line\n") }
+            }
+            if (l2.size > l1.size) l2.drop(l1.size).forEach { sb.append("> $it\n") }
+            if (sb.isEmpty()) "Files are identical" else sb.toString().trimEnd()
+        } catch (e: Exception) { "diff: ${e.message}" }
+    }
+
+    private fun handleStat(args: List<String>): String {
+        if (args.isEmpty()) return "stat: missing operand"
+        val f = if (args[0].startsWith("/")) File(args[0]) else File(currentDirectory, args[0])
+        return if (!f.exists()) "stat: ${args[0]}: No such file" else """
+File: ${f.absolutePath}
+Size: ${f.length()} bytes   Type: ${if (f.isDirectory) "directory" else "regular file"}
+Modified: ${java.util.Date(f.lastModified())}
+Readable: ${f.canRead()}   Writable: ${f.canWrite()}""".trimIndent()
+    }
+
+    private fun handleFileType(args: List<String>): String {
+        if (args.isEmpty()) return "file: missing operand"
+        return args.joinToString("\n") { name ->
+            val f = if (name.startsWith("/")) File(name) else File(currentDirectory, name)
+            val ext = f.extension.lowercase()
+            val type = when {
+                !f.exists() -> "No such file"
+                f.isDirectory -> "directory"
+                ext in listOf("jpg","jpeg","png","gif","bmp","webp") -> "image file"
+                ext in listOf("mp4","mkv","avi","mov","webm") -> "video file"
+                ext in listOf("mp3","aac","ogg","flac","wav") -> "audio file"
+                ext in listOf("apk","jar","zip","tar","gz","rar") -> "archive"
+                ext in listOf("kt","java","py","js","ts","c","cpp","rs","go") -> "source code"
+                ext in listOf("html","css","xml","json","yaml","yml") -> "markup/data"
+                ext in listOf("sh","bash") -> "shell script"
+                ext in listOf("txt","md","log") -> "text file"
+                f.length() == 0L -> "empty file"
+                else -> try { val b = f.readBytes().take(4); if (b[0] == 0x7f.toByte() && b[1] == 'E'.code.toByte()) "ELF binary" else "data" } catch (e: Exception) { "file" }
+            }
+            "${f.name}: $type"
+        }
+    }
+
+    private val envOverrides = mutableMapOf<String, String>()
+    private val aliases = mutableMapOf<String, String>()
+
+    private fun handleSet(args: List<String>): String {
+        if (args.isEmpty()) return envOverrides.entries.joinToString("\n") { "${it.key}=${it.value}" }
+        val eq = args.firstOrNull { it.contains("=") }
+        if (eq != null) {
+            val (k, v) = eq.split("=", limit = 2)
+            envOverrides[k] = v
+            return ""
+        }
+        return ""
+    }
+
+    private fun handleSource(args: List<String>): String {
+        if (args.isEmpty()) return "source: missing filename"
+        val f = if (args[0].startsWith("/")) File(args[0]) else File(currentDirectory, args[0])
+        return if (!f.exists()) "source: ${args[0]}: No such file" else executeShellCommand("sh \"${f.absolutePath}\"")
+    }
+
+    private fun handleAlias(args: List<String>, full: String): String {
+        if (args.isEmpty()) return aliases.entries.joinToString("\n") { "alias ${it.key}='${it.value}'" }
+        val eq = full.substringAfter("alias ").trim()
+        if (eq.contains("=")) {
+            val (k, v) = eq.split("=", limit = 2)
+            aliases[k.trim()] = v.trim().removeSurrounding("'").removeSurrounding("\"")
+            return ""
+        }
+        return "alias: ${args[0]}: not found"
+    }
+
+    private fun handleSysinfo(): String {
+        val rt = Runtime.getRuntime()
+        val root = File("/sdcard")
+        return """
+DISCORDIA TERMINAL — System Info
+Device:   SM-X200 (Samsung Galaxy Tab A8)
+Android:  ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})
+CPU ABI:  ${android.os.Build.SUPPORTED_ABIS.joinToString(",")}
+Storage:  ${root.totalSpace/1024/1024}MB total / ${root.freeSpace/1024/1024}MB free
+JVM Mem:  ${rt.maxMemory()/1024/1024}MB max / ${rt.totalMemory()/1024/1024}MB allocated
+App Ver:  Discordia Terminal v2.0.0
+        """.trimIndent()
+    }
+
+    private fun handleDiskInfo(): String {
+        val dirs = listOf("/sdcard", "/storage", "/data", "/")
+        return dirs.joinToString("\n") { path ->
+            val f = File(path)
+            if (f.exists()) "${path.padEnd(20)} total=${f.totalSpace/1024/1024}MB free=${f.freeSpace/1024/1024}MB" else "$path: N/A"
+        }
+    }
+
+    private fun handleNetInfo(): String {
+        return try {
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces()?.toList() ?: emptyList()
+            interfaces.filter { it.isUp }.joinToString("\n") { iface ->
+                val addrs = iface.inetAddresses.toList().filter { !it.isLoopbackAddress }.joinToString(", ") { it.hostAddress ?: "" }
+                "${iface.name.padEnd(12)} ${if (addrs.isEmpty()) "no inet" else addrs}"
+            }.ifEmpty { "No network interfaces found" }
+        } catch (e: Exception) { "netinfo: ${e.message}" }
+    }
+
     private fun getHelp(): String = """
-Discordia Terminal — Available Commands:
-  Navigation:   cd, pwd, ls
-  Files:        cat, touch, mkdir, rm, cp, mv, find, grep, du, df
-  System:       echo, env, uname, date, whoami, hostname
-  Session:      history, clear, help, exit
-  
-Any other command is executed via the Android shell.
+╔══════════════════════════════════════════════════════╗
+║       DISCORDIA TERMINAL v2.0 — Command Reference    ║
+╠══════════════════════════════════════════════════════╣
+║ Navigation:  cd, pwd, ls [-la]                       ║
+║ Files:       cat, head, tail, touch, mkdir, rm -rf   ║
+║              cp, mv, find, grep, diff, stat, file    ║
+║              ln, wc, sort, uniq, cut                 ║
+║ Editor:      nano/vi → opens IDE, open               ║
+║ System:      echo, env, export, set, uname, date     ║
+║              whoami, hostname, ps, kill, top, free   ║
+║              df, du, sysinfo, diskinfo, netinfo       ║
+║ Network:     ifconfig, ip, ping, curl, wget           ║
+║ Archive:     tar, zip, unzip                          ║
+║ Scripts:     sh, bash, source, ., alias               ║
+║ Dev:         git, python3, node, npm                  ║
+║ Paths:       basename, dirname, realpath, which       ║
+║ Session:     history, clear, help, exit               ║
+║ Other:       Any unlisted command → Android shell     ║
+╚══════════════════════════════════════════════════════╝
     """.trimIndent()
 }

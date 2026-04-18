@@ -2,7 +2,6 @@ package com.discordia.terminal
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import com.discordia.terminal.databinding.ActivityMainBinding
 
@@ -24,6 +23,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupCards() {
+        binding.cardIde.setOnClickListener {
+            SoundManager.playClick()
+            startActivity(Intent(this, CodeEditorActivity::class.java))
+        }
         binding.cardTerminal.setOnClickListener {
             SoundManager.playClick()
             startActivity(Intent(this, TerminalActivity::class.java))
@@ -31,6 +34,10 @@ class MainActivity : AppCompatActivity() {
         binding.cardFiles.setOnClickListener {
             SoundManager.playClick()
             startActivity(Intent(this, FileManagerActivity::class.java))
+        }
+        binding.cardGit.setOnClickListener {
+            SoundManager.playClick()
+            startActivity(Intent(this, GitActivity::class.java))
         }
         binding.cardServer.setOnClickListener {
             SoundManager.playClick()
@@ -47,6 +54,14 @@ class MainActivity : AppCompatActivity() {
         binding.cardWorkflows.setOnClickListener {
             SoundManager.playClick()
             startActivity(Intent(this, WorkflowBuilderActivity::class.java))
+        }
+        binding.cardExtensions.setOnClickListener {
+            SoundManager.playClick()
+            startActivity(Intent(this, ExtensionsActivity::class.java))
+        }
+        binding.cardSettings.setOnClickListener {
+            SoundManager.playClick()
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
 

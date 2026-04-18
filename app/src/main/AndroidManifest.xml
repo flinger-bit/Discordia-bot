@@ -36,6 +36,10 @@
         <activity android:name=".SetupActivity" android:exported="false"/>
         <activity android:name=".WorkflowBuilderActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".WebViewActivity" android:exported="false"/>
+        <activity android:name=".CodeEditorActivity" android:exported="false" android:configChanges="orientation|keyboardHidden|screenSize"/>
+        <activity android:name=".GitActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".ExtensionsActivity" android:exported="false"/>
+        <activity android:name=".SettingsActivity" android:exported="false"/>
         <service android:name=".ServerForegroundService" android:exported="false" android:foregroundServiceType="dataSync"/>
         <provider
             android:name="androidx.core.content.FileProvider"

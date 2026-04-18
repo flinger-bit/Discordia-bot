@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/terminal_bg">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/surface_dark"
+            app:titleTextColor="@color/accent_purple"/>
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:padding="10dp" android:background="@color/surface_dark">
+        <EditText android:id="@+id/etSearch" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:hint="Search extensions..." android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" android:background="@null" android:textSize="13sp"
+            android:inputType="text" android:imeOptions="actionSearch"/>
+    </LinearLayout>
+
+    <HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:background="@color/surface_dark" android:scrollbars="none">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="38dp"
+            android:orientation="horizontal" android:padding="4dp" android:gravity="center_vertical">
+            <Button android:id="@+id/chipAll" style="@style/QuickButton" android:text="All"/>
+            <Button android:id="@+id/chipInstalled" style="@style/QuickButton" android:text="Installed"/>
+            <Button android:id="@+id/chipLanguages" style="@style/QuickButton" android:text="Languages"/>
+            <Button android:id="@+id/chipThemes" style="@style/QuickButton" android:text="Themes"/>
+            <Button android:id="@+id/chipTools" style="@style/QuickButton" android:text="Tools"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <TextView android:id="@+id/tvCount" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:padding="8dp" android:textColor="@color/text_secondary" android:textSize="11sp"
+        android:text="Loading..."/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+</LinearLayout>

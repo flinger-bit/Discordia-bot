@@ -539,6 +539,9 @@ const IDE = {
 
   fmtSize(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'K';return(b/1048576).toFixed(1)+'M';},
 
+  toB64(str){try{return btoa(unescape(encodeURIComponent(str)));}catch(e){return btoa(str);}},
+  fromB64(b64){try{return decodeURIComponent(escape(atob(b64)));}catch(e){return atob(b64);}},
+
   fileIcon(name){
     const ext=name.split('.').pop().toLowerCase();
     const m={js:'🟡',ts:'🔵',jsx:'🟡',tsx:'🔵',py:'🐍',kt:'🟣',java:'☕',
@@ -1105,9 +1108,9 @@ const IDE = {
         }
         State.github.repos=repos;
         if(!repos.length){container.innerHTML='<div class="gh-section"><div style="font-size:12px;color:var(--text-dim)">No repositories found</div><button class="gh-btn" onclick="IDE.ghSwitchTab(\'create\')">+ Create First Repo</button></div>';return;}
-        const search=`<div style="padding:6px 10px"><input placeholder="Filter repos..." style="width:100%;background:#0d1117;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:12px;outline:none" oninput="IDE.filterRepos(this.value,${JSON.stringify(repos).replace(/</g,'\\u003c')})"></div>`;
-        container.innerHTML=search+repos.map(r=>`
-          <div class="gh-repo-item" onclick="IDE.githubOpenRepo(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+        const search=`<div style="padding:6px 10px"><input placeholder="Filter repos..." style="width:100%;background:#0d1117;border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:12px;outline:none" oninput="IDE.filterRepos(this.value)"></div>`;
+        container.innerHTML=search+repos.map((r,i)=>`
+          <div class="gh-repo-item" onclick="IDE.ghOpenRepo(${i})">
             <div style="flex:1">
               <div class="gh-repo-name">${r.name}</div>
               <div class="gh-repo-meta">${r.private?'🔒 Private':'🌐 Public'} · ${r.language||'Unknown'} · ⭐${r.stargazers_count||0}</div>
@@ -1115,25 +1118,33 @@ const IDE = {
             </div>
             <div style="display:flex;flex-direction:column;gap:3px">
               <button class="gh-btn-sm" onclick="IDE.githubCloneRepo('${r.clone_url}','${r.name}');event.stopPropagation()">⬇ Clone</button>
-              <button class="gh-btn-sm" onclick="IDE.githubOpenRepo(${JSON.stringify(r).replace(/"/g,'&quot;')});event.stopPropagation()">📂 Browse</button>
+              <button class="gh-btn-sm" onclick="IDE.ghOpenRepo(${i});event.stopPropagation()">📂 Browse</button>
             </div>
           </div>`).join('');
       }catch(e){container.innerHTML='<div class="gh-section" style="color:var(--red);font-size:12px">Error: '+e.message+'</div>';}
     },100);
   },
 
-  filterRepos(q,repos){
+  filterRepos(q){
+    const repos=State.github.repos||[];
     const container=document.getElementById('gh-tab-content');
-    const filtered=repos.filter(r=>(r.name+r.description+r.language).toLowerCase().includes(q.toLowerCase()));
+    const lq=q.toLowerCase();
+    const filtered=repos.map((r,i)=>({r,i})).filter(({r})=>(r.name+(r.description||'')+(r.language||'')).toLowerCase().includes(lq));
     const search=container.querySelector('div:first-child').outerHTML;
-    container.innerHTML=search+filtered.map(r=>`
-      <div class="gh-repo-item" onclick="IDE.githubOpenRepo(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+    container.innerHTML=search+filtered.map(({r,i})=>`
+      <div class="gh-repo-item" onclick="IDE.ghOpenRepo(${i})">
         <div style="flex:1"><div class="gh-repo-name">${r.name}</div><div class="gh-repo-meta">${r.private?'🔒':'🌐'} ${r.language||''} ⭐${r.stargazers_count||0}</div></div>
         <div style="display:flex;flex-direction:column;gap:3px">
           <button class="gh-btn-sm" onclick="IDE.githubCloneRepo('${r.clone_url}','${r.name}');event.stopPropagation()">⬇ Clone</button>
-          <button class="gh-btn-sm" onclick="IDE.githubOpenRepo(${JSON.stringify(r).replace(/"/g,'&quot;')});event.stopPropagation()">📂 Browse</button>
+          <button class="gh-btn-sm" onclick="IDE.ghOpenRepo(${i});event.stopPropagation()">📂 Browse</button>
         </div>
       </div>`).join('');
+  },
+
+  ghOpenRepo(idx){
+    const repo=(State.github.repos||[])[idx];
+    if(!repo)return;
+    this.githubOpenRepo(repo);
   },
 
   githubOpenRepo(repo){
@@ -1142,15 +1153,22 @@ const IDE = {
     this.ghSwitchTab('browse');
   },
 
+  ghBrowsePath(path){
+    const container=document.getElementById('gh-tab-content');
+    if(container)this.githubBrowseRepo(container,State.github.currentRepo,path);
+  },
+
   githubBrowseRepo(container,repo,path){
+    State.github.currentRepo=repo;
     State.github.repoPath=path;
-    const endpoint=`/repos/${repo.full_name}/contents/${path}?ref=${State.github.repoBranch}`;
+    const rn=repo.full_name;
+    const endpoint=`/repos/${rn}/contents/${path}?ref=${State.github.repoBranch}`;
     const crumbs=(['root'].concat(path?path.split('/'):[]).join(' / '));
     container.innerHTML=`
-      <div class="gh-breadcrumb">🐙 ${repo.name} · ${State.github.repoBranch}<br><span style="cursor:pointer;color:var(--blue)" onclick="IDE.githubBrowseRepo(document.getElementById('gh-tab-content'),'${JSON.stringify(repo).replace(/"/g,'&quot;')}','')">${crumbs}</span></div>
+      <div class="gh-breadcrumb">🐙 ${repo.name} · ${State.github.repoBranch}<br><span style="cursor:pointer;color:var(--blue)" onclick="IDE.ghBrowsePath('')">${crumbs}</span></div>
       <div class="gh-section" style="padding:4px 8px">
-        <button class="gh-btn-sm" onclick="IDE.githubCreateFileInRepo('${repo.full_name}','${path}')">📄+ New File</button>
-        <button class="gh-btn-sm" onclick="IDE.githubCreateFolderInRepo('${repo.full_name}','${path}')" style="margin-left:4px">📁+ New Folder</button>
+        <button class="gh-btn-sm" onclick="IDE.githubCreateFileInRepo('${rn}','${path}')">📄+ New File</button>
+        <button class="gh-btn-sm" onclick="IDE.githubCreateFolderInRepo('${rn}','${path}')" style="margin-left:4px">📁+ New Folder</button>
       </div>
       <div id="gh-file-list"><div class="gh-status">Loading...</div></div>`;
     setTimeout(()=>{
@@ -1158,20 +1176,21 @@ const IDE = {
         const raw=Android.githubApi('GET',endpoint,'');
         let items=JSON.parse(raw);
         if(!Array.isArray(items)){
-          // It's a file not a directory
-          const content=atob(items.content?.replace(/\n/g,'')||'');
-          this.openGitHubFileContent(items.name,content,items.path,repo.full_name,items.sha);
+          const content=IDE.fromB64(items.content?.replace(/\n/g,'')||'');
+          this.openGitHubFileContent(items.name,content,items.path,rn,items.sha);
           return;
         }
         items.sort((a,b)=>(b.type==='dir')-(a.type==='dir')||a.name.localeCompare(b.name));
         const list=document.getElementById('gh-file-list');
         if(!list)return;
         let html='';
-        if(path){html+=`<div class="gh-file-item" onclick="IDE.githubBrowseRepo(document.getElementById('gh-tab-content'),${JSON.stringify(repo).replace(/"/g,'&quot;')},'${path.includes('/')?path.substring(0,path.lastIndexOf('/')):''}')"><span>⬅</span><span style="color:var(--text-dim)">.. (back)</span></div>`;}
+        const parentPath=path.includes('/')?path.substring(0,path.lastIndexOf('/')):'';
+        if(path){html+=`<div class="gh-file-item" onclick="IDE.ghBrowsePath('${parentPath}')"><span>⬅</span><span style="color:var(--text-dim)">.. (back)</span></div>`;}
         html+=items.map(item=>{
           const icon=item.type==='dir'?'📁':this.fileIcon(item.name);
           const newPath=path?path+'/'+item.name:item.name;
-          const action=item.type==='dir'?`IDE.githubBrowseRepo(document.getElementById('gh-tab-content'),${JSON.stringify(repo).replace(/"/g,'&quot;')},'${newPath}')`:`IDE.githubOpenFile('${repo.full_name}','${newPath}','${item.sha}','${item.name}')`;
+          const esc=newPath.replace(/'/g,"\\'");
+          const action=item.type==='dir'?`IDE.ghBrowsePath('${esc}')`:`IDE.githubOpenFile('${rn}','${esc}','${item.sha}','${item.name.replace(/'/g,"\\'")}')`;
           return `<div class="gh-file-item" onclick="${action}">
             <span>${icon}</span><span style="flex:1">${item.name}</span>
             ${item.type==='file'?`<span class="gh-repo-meta">${this.fmtSize(item.size||0)}</span>`:''}
@@ -1189,7 +1208,7 @@ const IDE = {
     try{
       const raw=Android.githubApi('GET',`/repos/${repoFullName}/contents/${filePath}`,'');
       const data=JSON.parse(raw);
-      const content=atob(data.content?.replace(/\n/g,'')||'');
+      const content=IDE.fromB64(data.content?.replace(/\n/g,'')||'');
       this.openGitHubFileContent(fileName,content,filePath,repoFullName,data.sha);
     }catch(e){this.toast('Error opening: '+e.message);}
   },
@@ -1295,7 +1314,7 @@ const IDE = {
     const name=prompt('New file name:');
     if(!name)return;
     const filePath=currentPath?currentPath+'/'+name:name;
-    const content=btoa('');
+    const content=IDE.toB64('');
     try{
       const body=JSON.stringify({message:`Create ${filePath}`,content});
       const raw=Android.githubApi('PUT',`/repos/${repoFullName}/contents/${filePath}`,body);
@@ -1310,7 +1329,7 @@ const IDE = {
     if(!name)return;
     const filePath=currentPath?currentPath+'/'+name+'/.gitkeep':name+'/.gitkeep';
     try{
-      const body=JSON.stringify({message:`Create ${name}/`,content:btoa('')});
+      const body=JSON.stringify({message:`Create ${name}/`,content:IDE.toB64('')});
       const raw=Android.githubApi('PUT',`/repos/${repoFullName}/contents/${filePath}`,body);
       const res=JSON.parse(raw);
       if(res.content){this.toast('✓ Folder created: '+name);this.ghSwitchTab('browse');}

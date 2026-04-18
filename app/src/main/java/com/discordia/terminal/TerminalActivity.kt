@@ -14,8 +14,6 @@ import com.discordia.terminal.databinding.ActivityTerminalBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.*
 
 class TerminalActivity : AppCompatActivity() {
 
@@ -29,21 +27,25 @@ class TerminalActivity : AppCompatActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.title = "Terminal"
+        supportActionBar?.title = "Discordia Terminal v2.0"
 
         binding.tvOutput.typeface = Typeface.MONOSPACE
         setupInput()
+        setupQuickKeys()
         showBanner()
     }
 
     private fun showBanner() {
         val banner = """
-╔══════════════════════════════════════╗
-║   DISCORDIA TERMINAL  v1.0           ║
-║   Device: Samsung SM-X200            ║
-║   Android 14 — All Files Access      ║
-╚══════════════════════════════════════╝
-Type 'help' for available commands.
+╔══════════════════════════════════════════╗
+║  ⚡ DISCORDIA TERMINAL  v2.0             ║
+║  Device  : Samsung SM-X200               ║
+║  Android : 14 — All Files Access         ║
+║  GitHub  : Integrated (set PAT in IDE)   ║
+╚══════════════════════════════════════════╝
+Type 'help' for all 50+ built-in commands.
+Use IDE button above to open the code editor.
+
 ${getPrompt()}""".trimIndent()
         appendOutput(banner)
         updatePrompt()
@@ -52,72 +54,119 @@ ${getPrompt()}""".trimIndent()
     private fun setupInput() {
         binding.etInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_NULL) {
-                executeCommand()
-                true
+                executeCommand(); true
             } else false
         }
         binding.etInput.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN) {
                 when (keyCode) {
                     KeyEvent.KEYCODE_DPAD_UP -> {
-                        shell.getPreviousCommand()?.let { binding.etInput.setText(it); binding.etInput.setSelection(it.length) }
-                        true
+                        shell.getPreviousCommand()?.let {
+                            binding.etInput.setText(it)
+                            binding.etInput.setSelection(it.length)
+                        }; true
                     }
                     KeyEvent.KEYCODE_DPAD_DOWN -> {
                         val cmd = shell.getNextCommand() ?: ""
-                        binding.etInput.setText(cmd); binding.etInput.setSelection(cmd.length)
-                        true
+                        binding.etInput.setText(cmd); binding.etInput.setSelection(cmd.length); true
                     }
                     else -> false
                 }
             } else false
         }
         binding.btnExec.setOnClickListener { executeCommand() }
+    }
+
+    private fun setupQuickKeys() {
+        // Row 1: Control keys
+        binding.btnCtrlC.setOnClickListener { appendOutput("^C"); binding.etInput.text?.clear(); updatePrompt() }
+        binding.btnCtrlD.setOnClickListener { appendOutput("^D — EOF"); binding.etInput.text?.clear(); updatePrompt() }
+        binding.btnCtrlZ.setOnClickListener { appendOutput("^Z"); binding.etInput.text?.clear(); updatePrompt() }
+        binding.btnTab.setOnClickListener { autoComplete(binding.etInput.text.toString()) }
+        binding.btnEsc.setOnClickListener { binding.etInput.text?.clear() }
+
+        // Arrow keys — navigate history
+        binding.btnArrowUp.setOnClickListener {
+            shell.getPreviousCommand()?.let { binding.etInput.setText(it); binding.etInput.setSelection(it.length) }
+        }
+        binding.btnArrowDown.setOnClickListener {
+            val cmd = shell.getNextCommand() ?: ""
+            binding.etInput.setText(cmd); binding.etInput.setSelection(cmd.length)
+        }
+        binding.btnArrowLeft.setOnClickListener {
+            val pos = binding.etInput.selectionStart
+            if (pos > 0) binding.etInput.setSelection(pos - 1)
+        }
+        binding.btnArrowRight.setOnClickListener {
+            val pos = binding.etInput.selectionStart
+            val len = binding.etInput.text?.length ?: 0
+            if (pos < len) binding.etInput.setSelection(pos + 1)
+        }
+
+        // Home/End/PgUp/PgDn
+        binding.btnHome.setOnClickListener { binding.etInput.setSelection(0) }
+        binding.btnEnd.setOnClickListener { binding.etInput.setSelection(binding.etInput.text?.length ?: 0) }
+        binding.btnPgUp.setOnClickListener { binding.scrollView.smoothScrollBy(0, -binding.scrollView.height / 2) }
+        binding.btnPgDn.setOnClickListener { binding.scrollView.smoothScrollBy(0, binding.scrollView.height / 2) }
+
+        // Row 2: Special chars — insert into input at cursor position
+        val charButtons = mapOf(
+            binding.btnPipe to "|",
+            binding.btnAmp to "&",
+            binding.btnSlash to "/",
+            binding.btnBackslash to "\\",
+            binding.btnTilde to "~",
+            binding.btnDash to "-",
+            binding.btnUnderscore to "_",
+            binding.btnDot to ".",
+            binding.btnStar to "*",
+            binding.btnDollar to "$",
+            binding.btnAt to "@",
+            binding.btnHash to "#",
+            binding.btnQuote to "\"",
+            binding.btnSingleQuote to "'",
+            binding.btnGt to ">",
+            binding.btnLt to "<",
+            binding.btnSemicolon to ";",
+        )
+        charButtons.forEach { (btn, char) ->
+            btn.setOnClickListener { insertAtCursor(char) }
+        }
+
+        // Utility
         binding.btnClear.setOnClickListener {
-            outputBuilder.clear()
-            binding.tvOutput.text = ""
-            updatePrompt()
+            outputBuilder.clear(); binding.tvOutput.text = ""; updatePrompt()
         }
         binding.btnCopy.setOnClickListener {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("Terminal Output", binding.tvOutput.text))
+            android.widget.Toast.makeText(this, "Copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
         }
-        binding.btnCtrlC.setOnClickListener {
-            appendOutput("^C")
-            binding.etInput.text?.clear()
-            updatePrompt()
-        }
-        binding.btnTab.setOnClickListener {
-            val current = binding.etInput.text.toString()
-            autoComplete(current)
-        }
+    }
+
+    private fun insertAtCursor(text: String) {
+        val et = binding.etInput
+        val start = et.selectionStart.coerceAtLeast(0)
+        val end = et.selectionEnd.coerceAtLeast(0)
+        et.text?.replace(minOf(start, end), maxOf(start, end), text)
+        et.requestFocus()
     }
 
     private fun executeCommand() {
         val input = binding.etInput.text.toString().trim()
         binding.etInput.text?.clear()
-        if (input.isEmpty()) {
-            updatePrompt()
-            return
-        }
-        val prompt = "${getPrompt()}$input"
-        appendOutput(prompt)
-
-        if (input == "exit") {
-            appendOutput("Goodbye.")
-            finish()
-            return
-        }
+        if (input.isEmpty()) { updatePrompt(); return }
+        appendOutput("${getPrompt()}$input")
+        if (input == "exit" || input == "quit") { appendOutput("Goodbye."); finish(); return }
 
         lifecycleScope.launch {
             binding.btnExec.isEnabled = false
-            val result = shell.execute(input)
+            val result = withContext(Dispatchers.IO) { shell.execute(input) }
             withContext(Dispatchers.Main) {
-                if (result.isNotEmpty() && result != "\u001b[2J\u001b[H") {
+                if (result == "\u001b[2J\u001b[H") {
+                    outputBuilder.clear(); binding.tvOutput.text = ""
+                } else if (result.isNotEmpty()) {
                     appendOutput(result)
-                } else if (result == "\u001b[2J\u001b[H") {
-                    outputBuilder.clear()
-                    binding.tvOutput.text = ""
                 }
                 updatePrompt()
                 binding.btnExec.isEnabled = true

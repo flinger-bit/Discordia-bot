@@ -23,6 +23,9 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.Base64
 import java.util.concurrent.TimeUnit
 
 class CodeEditorActivity : AppCompatActivity() {
@@ -270,6 +273,182 @@ class CodeEditorActivity : AppCompatActivity() {
         @JavascriptInterface
         fun showToast(message: String) {
             runOnUiThread { Toast.makeText(this@CodeEditorActivity, message, Toast.LENGTH_SHORT).show() }
+        }
+
+        // ── GitHub API bridge ──
+        @JavascriptInterface
+        fun githubApi(method: String, endpoint: String, body: String): String {
+            return try {
+                val prefs = getSharedPreferences("discordia_github", MODE_PRIVATE)
+                val token = prefs.getString("token", "") ?: ""
+                if (token.isEmpty()) return """{"error":"No GitHub token. Set it in the GitHub panel."}"""
+                val url = URL("https://api.github.com$endpoint")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = method
+                conn.setRequestProperty("Authorization", "token $token")
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+                conn.setRequestProperty("User-Agent", "DiscordiaTerminal/2.0")
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.connectTimeout = 20000
+                conn.readTimeout = 20000
+                if (body.isNotEmpty() && method != "GET") {
+                    conn.doOutput = true
+                    val bytes = body.toByteArray()
+                    conn.setRequestProperty("Content-Length", bytes.size.toString())
+                    conn.outputStream.write(bytes)
+                }
+                val code = conn.responseCode
+                val stream = if (code < 400) conn.inputStream else conn.errorStream
+                val text = stream?.bufferedReader()?.readText() ?: ""
+                conn.disconnect()
+                if (text.isEmpty()) """{"_code":$code,"ok":true}""" else text
+            } catch (e: Exception) {
+                """{"error":"${e.message?.replace("\"","'")}"}"""
+            }
+        }
+
+        @JavascriptInterface
+        fun getGitHubToken(): String =
+            getSharedPreferences("discordia_github", MODE_PRIVATE).getString("token", "") ?: ""
+
+        @JavascriptInterface
+        fun saveGitHubToken(token: String) {
+            getSharedPreferences("discordia_github", MODE_PRIVATE).edit().putString("token", token).apply()
+            runOnUiThread { Toast.makeText(this@CodeEditorActivity, "GitHub token saved", Toast.LENGTH_SHORT).show() }
+        }
+
+        @JavascriptInterface
+        fun getGitHubOwner(): String =
+            getSharedPreferences("discordia_github", MODE_PRIVATE).getString("owner", "") ?: ""
+
+        @JavascriptInterface
+        fun saveGitHubOwner(owner: String) {
+            getSharedPreferences("discordia_github", MODE_PRIVATE).edit().putString("owner", owner).apply()
+        }
+
+        // ── File system extras ──
+        @JavascriptInterface
+        fun createFolder(path: String): String {
+            return try { File(path).mkdirs(); "ok" } catch (e: Exception) { e.message ?: "error" }
+        }
+
+        @JavascriptInterface
+        fun deleteFileOrFolder(path: String): String {
+            return try {
+                val f = File(path)
+                if (f.isDirectory) f.deleteRecursively() else f.delete()
+                "ok"
+            } catch (e: Exception) { e.message ?: "error" }
+        }
+
+        @JavascriptInterface
+        fun renameFile(oldPath: String, newPath: String): String {
+            return try { if (File(oldPath).renameTo(File(newPath))) "ok" else "rename failed" }
+            catch (e: Exception) { e.message ?: "error" }
+        }
+
+        @JavascriptInterface
+        fun getFileInfo(path: String): String {
+            return try {
+                val f = File(path)
+                JSONObject().apply {
+                    put("exists", f.exists()); put("size", f.length()); put("isDir", f.isDirectory)
+                    put("canRead", f.canRead()); put("canWrite", f.canWrite())
+                    put("modified", f.lastModified()); put("name", f.name); put("parent", f.parent ?: "")
+                }.toString()
+            } catch (e: Exception) { """{"error":"${e.message}"}""" }
+        }
+
+        @JavascriptInterface
+        fun searchFiles(dir: String, query: String, caseSensitive: Boolean): String {
+            return try {
+                val flag = if (caseSensitive) "" else "-i"
+                runCommand("""grep -rn $flag "${query.replace("\"", "\\\"")}" "$dir" --include="*.kt" --include="*.java" --include="*.py" --include="*.js" --include="*.ts" --include="*.html" --include="*.css" --include="*.json" --include="*.xml" --include="*.md" --include="*.txt" --include="*.sh" --include="*.gradle" 2>/dev/null | head -200""")
+            } catch (e: Exception) { "" }
+        }
+
+        // ── Run file in terminal ──
+        @JavascriptInterface
+        fun runFile(path: String): String {
+            val file = File(path)
+            val ext = file.extension.lowercase()
+            val cmd = when (ext) {
+                "py" -> """python3 "$path" 2>&1"""
+                "js", "mjs" -> """node "$path" 2>&1"""
+                "sh", "bash" -> """bash "$path" 2>&1"""
+                "rb" -> """ruby "$path" 2>&1"""
+                "php" -> """php "$path" 2>&1"""
+                "go" -> """go run "$path" 2>&1"""
+                "kt" -> "echo 'Build with Gradle: ./gradlew run — or open terminal and use kotlinc'"
+                "java" -> """cd "${file.parent}" && javac "${file.name}" 2>&1 && java "${file.nameWithoutExtension}" 2>&1"""
+                "rs" -> """cd "${file.parent}" && rustc "${file.name}" 2>&1 && ./"${file.nameWithoutExtension}" 2>&1"""
+                "pl" -> """perl "$path" 2>&1"""
+                "lua" -> """lua "$path" 2>&1"""
+                "r" -> """Rscript "$path" 2>&1"""
+                else -> """echo 'No runner for .$ext — try: sh, py, js, rb, php, go, java, rs, pl, lua'"""
+            }
+            return try {
+                val pb = ProcessBuilder("/system/bin/sh", "-c", cmd)
+                    .directory(file.parentFile ?: File(currentDir))
+                    .redirectErrorStream(true)
+                pb.environment()["HOME"] = "/sdcard"
+                pb.environment()["PATH"] = "/system/bin:/system/xbin:/sbin:/vendor/bin:${pb.environment()["PATH"] ?: ""}"
+                val proc = pb.start()
+                val killed = !proc.waitFor(30, TimeUnit.SECONDS)
+                val out = BufferedReader(InputStreamReader(proc.inputStream)).readText().trimEnd()
+                if (killed) { proc.destroyForcibly(); "$out\n[Process killed — 30s timeout]" } else out
+            } catch (e: Exception) { "Error: ${e.message}" }
+        }
+
+        // ── GitHub file operations (push single file) ──
+        @JavascriptInterface
+        fun githubPushFile(repoFullName: String, filePath: String, content: String, message: String, sha: String): String {
+            return try {
+                val prefs = getSharedPreferences("discordia_github", MODE_PRIVATE)
+                val token = prefs.getString("token", "") ?: ""
+                if (token.isEmpty()) return """{"error":"No token"}"""
+                val b64 = Base64.getEncoder().encodeToString(content.toByteArray())
+                val body = JSONObject().apply {
+                    put("message", message); put("content", b64)
+                    if (sha.isNotEmpty()) put("sha", sha)
+                }.toString()
+                val url = URL("https://api.github.com/repos/$repoFullName/contents/$filePath")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "PUT"
+                conn.setRequestProperty("Authorization", "token $token")
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+                conn.setRequestProperty("User-Agent", "DiscordiaTerminal/2.0")
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.connectTimeout = 20000; conn.readTimeout = 20000; conn.doOutput = true
+                val bytes = body.toByteArray()
+                conn.setRequestProperty("Content-Length", bytes.size.toString())
+                conn.outputStream.write(bytes)
+                val code = conn.responseCode
+                val stream = if (code < 400) conn.inputStream else conn.errorStream
+                val text = stream?.bufferedReader()?.readText() ?: ""
+                conn.disconnect()
+                text
+            } catch (e: Exception) { """{"error":"${e.message}"}""" }
+        }
+
+        // ── pkg-like package checker ──
+        @JavascriptInterface
+        fun checkPackage(name: String): String {
+            val paths = listOf("/system/bin", "/system/xbin", "/sbin", "/data/data/com.termux/files/usr/bin")
+            val found = paths.any { File("$it/$name").exists() }
+            return if (found) "installed" else "not_found"
+        }
+
+        @JavascriptInterface
+        fun listInstalledPackages(): String {
+            val pkgs = listOf("python3","node","git","bash","sh","curl","wget","zip","unzip","tar","grep","sed","awk","find","ssh","nc","nmap","php","ruby","perl","lua","go","rustc","javac")
+            val paths = listOf("/system/bin", "/system/xbin", "/sbin", "/vendor/bin", "/data/data/com.termux/files/usr/bin")
+            val arr = JSONArray()
+            pkgs.forEach { pkg ->
+                val found = paths.any { File("$it/$pkg").exists() }
+                arr.put(JSONObject().put("name", pkg).put("installed", found))
+            }
+            return arr.toString()
         }
     }
 

@@ -7,19 +7,39 @@
   },
   "id": "flinger-bit.xdbot-rework",
   "name": "XDBot Rework",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "developer": "flinger-bit",
-  "description": "A complete rework of XDBot — frame-accurate macro recorder, replayer, and utility mod for GD 2.2081.",
-  "tags": ["bot", "macro", "utility", "gameplay"],
+  "description": "A rework of xdBot for GD 2.2081 — frame-accurate macro recorder/replayer, TPS bypass, clickbot, noclip and more.",
+  "tags": ["bot", "macro", "utility", "gameplay", "cheat"],
   "links": {
     "source": "https://github.com/flinger-bit/Discordia-bot"
   },
   "settings": {
+    "show-overlay": {
+      "name": "Show Overlay",
+      "description": "Display bot state, frame count and macro name during play.",
+      "type": "bool",
+      "default": true
+    },
+    "frame-label": {
+      "name": "Frame Label",
+      "description": "Show current frame number on screen while in a level.",
+      "type": "bool",
+      "default": false
+    },
     "noclip": {
       "name": "Noclip",
       "description": "Pass through all objects without dying.",
       "type": "bool",
       "default": false
+    },
+    "noclip-opacity": {
+      "name": "Noclip Player Opacity",
+      "description": "Player opacity while noclip is active and player would have died.",
+      "type": "int",
+      "default": 80,
+      "min": 0,
+      "max": 255
     },
     "auto-respawn": {
       "name": "Auto Respawn",
@@ -28,62 +48,90 @@
       "default": false
     },
     "auto-respawn-delay": {
-      "name": "Auto Respawn Delay (s)",
-      "description": "Seconds to wait before auto-respawning.",
+      "name": "Respawn Delay (seconds)",
+      "description": "Seconds to wait before auto-respawning after death.",
       "type": "float",
       "default": 0.5,
       "min": 0.0,
-      "max": 5.0,
-      "control": {
-        "arrows": true,
-        "arrow-step": 0.1,
-        "big-arrows": true,
-        "big-arrow-step": 0.5,
-        "slider": true,
-        "slider-step": 0.1,
-        "input": true
-      }
+      "max": 5.0
+    },
+    "tps-bypass": {
+      "name": "TPS Bypass",
+      "description": "Override the physics tick rate for higher/lower accuracy.",
+      "type": "bool",
+      "default": false
+    },
+    "tps-value": {
+      "name": "TPS Value",
+      "description": "Physics ticks per second when TPS bypass is enabled. Default is 240.",
+      "type": "float",
+      "default": 240.0,
+      "min": 1.0,
+      "max": 1000.0
     },
     "speedhack": {
       "name": "Speedhack",
-      "description": "Modify game speed during play.",
+      "description": "Scale the overall game speed.",
       "type": "bool",
       "default": false
     },
     "speedhack-value": {
-      "name": "Speedhack Multiplier",
+      "name": "Speedhack Speed",
       "description": "Speed multiplier (1.0 = normal).",
       "type": "float",
       "default": 1.0,
       "min": 0.1,
-      "max": 10.0,
-      "control": {
-        "arrows": true,
-        "arrow-step": 0.1,
-        "big-arrows": true,
-        "big-arrow-step": 0.5,
-        "slider": true,
-        "slider-step": 0.1,
-        "input": true
-      }
+      "max": 10.0
     },
-    "show-overlay": {
-      "name": "Show Bot Overlay",
-      "description": "Display bot state and frame count on screen while playing.",
+    "speedhack-audio": {
+      "name": "Speedhack Audio Pitch",
+      "description": "Adjust audio pitch to match speedhack speed.",
+      "type": "bool",
+      "default": false
+    },
+    "clickbot": {
+      "name": "Clickbot",
+      "description": "Play sounds on button press and release.",
+      "type": "bool",
+      "default": false
+    },
+    "clickbot-volume": {
+      "name": "Clickbot Volume",
+      "description": "Volume of clickbot sounds (0–100).",
+      "type": "int",
+      "default": 80,
+      "min": 0,
+      "max": 100
+    },
+    "clickbot-playing-only": {
+      "name": "Clickbot Only While Playing",
+      "description": "Only play click sounds during macro playback, not during recording.",
+      "type": "bool",
+      "default": false
+    },
+    "frame-stepper": {
+      "name": "Frame Stepper",
+      "description": "Hold physics after each step. Press N to advance one frame.",
+      "type": "bool",
+      "default": false
+    },
+    "auto-stop-playing": {
+      "name": "Auto Stop Playing",
+      "description": "Automatically stop playback when the macro ends.",
       "type": "bool",
       "default": true
     },
-    "show-hitboxes": {
-      "name": "Show Hitboxes (Practice)",
-      "description": "Show object hitboxes while in practice mode.",
+    "disable-speedhack-on-exit": {
+      "name": "Disable Speedhack On Exit",
+      "description": "Automatically disable speedhack when exiting a level.",
       "type": "bool",
-      "default": false
-    },
-    "frame-step-key": {
-      "name": "Frame Step Mode",
-      "description": "Pause playback and step one frame at a time (press N in-game).",
-      "type": "bool",
-      "default": false
+      "default": true
     }
+  },
+  "resources": {
+    "files": [
+      "resources/hold_click.mp3",
+      "resources/release_click.mp3"
+    ]
   }
 }

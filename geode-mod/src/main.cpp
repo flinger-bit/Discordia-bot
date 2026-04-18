@@ -1,260 +1,171 @@
-#include <Geode/Geode.hpp>
+// ── XDBot Rework — Main Hooks ─────────────────────────────────────────────
+// Handles:
+//   • PlayLayer: init overlay + frame label, per-frame playback dispatch
+//   • GJBaseGameLayer: handleButton recording/playback intercept
+//   • PauseLayer: inject Bot button + keyboard shortcut
+
+#include "includes.hpp"
+#include "hacks/Clickbot.hpp"
+#include "ui/BotLayer.hpp"
+
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PauseLayer.hpp>
-#include <Geode/modify/PlayerObject.hpp>
-#include <Geode/modify/CCScheduler.hpp>
-#include "BotManager.hpp"
-#include "layers/BotLayer.hpp"
 
 using namespace geode::prelude;
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  PLAY LAYER — frame counting, noclip, respawn, overlay, frame-step
+//  PLAY LAYER
 // ═══════════════════════════════════════════════════════════════════════════
 
 class $modify(XDBotPlayLayer, PlayLayer) {
     struct Fields {
         CCLabelBMFont* overlayLabel = nullptr;
-        bool           respawnScheduled = false;
+        CCLabelBMFont* frameLabel   = nullptr;
     };
 
     // ── init ────────────────────────────────────────────────────────────
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
 
-        auto* bot = BotManager::get();
-        bot->resetFrame();
-        bot->setNoclipDead(false);
-        bot->resetNoclipDeaths();
+        auto& g = Global::get();
+        g.reset();
 
-        // Create overlay label
+        auto* ws = CCDirector::get()->getWinSize();
+
+        // Overlay (top-left HUD)
         if (Mod::get()->getSettingValue<bool>("show-overlay")) {
             auto* lbl = CCLabelBMFont::create("", "chatFont.fnt");
-            lbl->setScale(0.55f);
+            lbl->setScale(0.5f);
             lbl->setAnchorPoint({0.f, 1.f});
-            lbl->setZOrder(100);
-
-            auto* winSize = CCDirector::get()->getWinSize();
-            lbl->setPosition({4.f, winSize.height - 4.f});
+            lbl->setPosition({6.f, ws.height - 4.f});
+            lbl->setZOrder(999);
             this->addChild(lbl);
             m_fields->overlayLabel = lbl;
+        }
+
+        // Frame label (top-right)
+        if (Mod::get()->getSettingValue<bool>("frame-label")) {
+            auto* lbl = CCLabelBMFont::create("Frame: 0", "chatFont.fnt");
+            lbl->setScale(0.5f);
+            lbl->setAnchorPoint({1.f, 1.f});
+            lbl->setPosition({ws.width - 6.f, ws.height - 4.f});
+            lbl->setZOrder(999);
+            this->addChild(lbl);
+            m_fields->frameLabel = lbl;
         }
 
         return true;
     }
 
-    // ── update ──────────────────────────────────────────────────────────
-    void update(float dt) {
-        auto* bot = BotManager::get();
+    // ── postUpdate ──────────────────────────────────────────────────────
+    void postUpdate(float dt) {
+        PlayLayer::postUpdate(dt);
 
-        // Speedhack: scale dt before physics runs
-        if (!m_isPracticeMode && Mod::get()->getSettingValue<bool>("speedhack")) {
-            float speed = Mod::get()->getSettingValue<float>("speedhack-value");
-            dt *= speed;
-        }
+        auto& g = Global::get();
+        int frame = Global::getCurrentFrame();
 
-        // Frame-step: only advance when explicitly requested
-        if (bot->isFrameStep() && bot->getState() == BotState::Playing) {
-            if (!bot->shouldAdvanceFrame()) return;
-            bot->setAdvanceFrame(false);
-        }
-
-        PlayLayer::update(dt);
-        bot->incrementFrame();
-
-        // Overlay update
+        // Update overlay
         if (m_fields->overlayLabel) {
-            std::string txt =
-                "XDBot | " + bot->stateLabel() +
-                " | F:" + std::to_string(bot->getCurrentFrame()) +
-                " | Macro:" + bot->getMacroName();
-
-            if (Mod::get()->getSettingValue<bool>("noclip") && bot->getNoclipDeaths() > 0) {
-                txt += " | NC:" + std::to_string(bot->getNoclipDeaths());
+            std::string txt = fmt::format(
+                "XDBot | {} | F:{} | {}",
+                g.stateLabel(), frame, g.macroName
+            );
+            if (Mod::get()->getSettingValue<bool>("noclip") && g.noclipDeaths > 0) {
+                txt += fmt::format(" | NC:{}", g.noclipDeaths);
             }
             m_fields->overlayLabel->setString(txt.c_str());
         }
-    }
 
-    // ── onDeath ─────────────────────────────────────────────────────────
-    void onDeath(GameObject* obj) {
-        auto* bot = BotManager::get();
-
-        // Noclip: skip death entirely
-        if (Mod::get()->getSettingValue<bool>("noclip")) {
-            bot->setNoclipDead(true);
-            // increment private death counter for display
-            // We use a workaround since we can't directly access noclipDeaths
-            // through the field — BotManager tracks it
-            return;
+        // Update frame label
+        if (m_fields->frameLabel) {
+            m_fields->frameLabel->setString(
+                ("Frame: " + std::to_string(frame)).c_str()
+            );
         }
 
-        PlayLayer::onDeath(obj);
+        // ── Playback: fire inputs for this frame ──────────────────────
+        // handleButton(hold, button, player1)
+        // inp.player2 flag: false = player1, true = player2
+        if (g.state == BotState::Playing) {
+            for (auto& inp : g.getInputsForFrame(frame)) {
+                GJBaseGameLayer::handleButton(inp.hold, inp.button, !inp.player2);
+            }
 
-        // Auto-respawn
-        if (!m_fields->respawnScheduled &&
-            Mod::get()->getSettingValue<bool>("auto-respawn")) {
-            m_fields->respawnScheduled = true;
-            float delay = Mod::get()->getSettingValue<float>("auto-respawn-delay");
-            this->scheduleOnce(schedule_selector(XDBotPlayLayer::doRespawn), delay);
+            // Check if done
+            if (Mod::get()->getSettingValue<bool>("auto-stop-playing") &&
+                g.isPlaybackFinished()) {
+                g.state = BotState::Disabled;
+                Notification::create("Playback finished!", NotificationIcon::Info)->show();
+            }
         }
-    }
-
-    // ── resetLevel ──────────────────────────────────────────────────────
-    void resetLevel() {
-        PlayLayer::resetLevel();
-        m_fields->respawnScheduled = false;
-
-        auto* bot = BotManager::get();
-        bot->resetFrame();
-        bot->setNoclipDead(false);
-    }
-
-    // ── onQuit ──────────────────────────────────────────────────────────
-    void onQuit() {
-        PlayLayer::onQuit();
-        auto* bot = BotManager::get();
-        if (bot->getState() == BotState::Playing) {
-            bot->setState(BotState::Disabled);
-        }
-        // Keep recording state so user can save after quitting
-    }
-
-    // ── schedule_selector callback ───────────────────────────────────────
-    void doRespawn(float) {
-        this->resetLevel();
     }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  GJBASE GAME LAYER — input recording & playback
+//  GJBASE GAME LAYER — input intercept
 // ═══════════════════════════════════════════════════════════════════════════
 
 class $modify(XDBotGameLayer, GJBaseGameLayer) {
-    // ── handleButton ─────────────────────────────────────────────────────
-    // Signature: handleButton(bool hold, int button, bool player1)
-    void handleButton(bool hold, int button, bool player1) {
-        auto* bot = BotManager::get();
 
-        switch (bot->getState()) {
+    // handleButton(hold, button, player1)
+    void handleButton(bool hold, int button, bool player1) {
+        auto& g = Global::get();
+
+        switch (g.state) {
+
             case BotState::Recording:
-                // Record the input, then pass it through so the player can play
-                bot->recordInput(player1, hold, button);
+                // Record the input then pass through (player can still play)
+                g.recordInput(!player1, hold, button);  // player2 = !player1
+                Clickbot::onInput(hold, button, !player1);
                 GJBaseGameLayer::handleButton(hold, button, player1);
                 break;
 
             case BotState::Playing:
-                // Block all user input during playback — bot drives the inputs
+                // Block all manual input during playback
+                // (inputs are fired from postUpdate instead)
+                Clickbot::onInput(hold, button, !player1);
                 break;
 
             case BotState::Disabled:
             default:
+                Clickbot::onInput(hold, button, !player1);
                 GJBaseGameLayer::handleButton(hold, button, player1);
                 break;
         }
     }
-
-    // ── update ───────────────────────────────────────────────────────────
-    void update(float dt) {
-        GJBaseGameLayer::update(dt);
-
-        auto* bot = BotManager::get();
-        if (bot->getState() != BotState::Playing) return;
-
-        int frame = bot->getCurrentFrame();
-
-        // Fire P1 inputs for this frame
-        for (const auto& inp : bot->getInputsForFrame(frame, true)) {
-            GJBaseGameLayer::handleButton(inp.hold, inp.button, true);
-        }
-        // Fire P2 inputs for this frame
-        for (const auto& inp : bot->getInputsForFrame(frame, false)) {
-            GJBaseGameLayer::handleButton(inp.hold, inp.button, false);
-        }
-
-        // Auto-stop when macro ends
-        if (bot->isPlaybackFinished()) {
-            bot->setState(BotState::Disabled);
-            Notification::create("Playback finished.", NotificationIcon::Info)->show();
-        }
-    }
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  PLAYER OBJECT — hitbox visualisation
-// ═══════════════════════════════════════════════════════════════════════════
-
-class $modify(XDBotPlayer, PlayerObject) {
-    void update(float dt) {
-        PlayerObject::update(dt);
-
-        if (!Mod::get()->getSettingValue<bool>("show-hitboxes")) return;
-
-        // Only show hitboxes in practice mode
-        auto* pl = PlayLayer::get();
-        if (!pl || !pl->m_isPracticeMode) return;
-
-        // Draw hitbox outline using a simple debug box
-        // The hitbox is m_objectRect; we create a CCDrawNode overlay if not present
-        if (!this->getChildByTag(7777)) {
-            auto* draw = CCDrawNode::create();
-            draw->setTag(7777);
-            draw->setZOrder(10);
-            this->addChild(draw);
-        }
-        auto* draw = dynamic_cast<CCDrawNode*>(this->getChildByTag(7777));
-        if (!draw) return;
-
-        draw->clear();
-        auto rect = m_objectRect;
-        // Convert to local coordinates
-        float hw = rect.size.width  / 2.f;
-        float hh = rect.size.height / 2.f;
-        ccColor4F outline = {1.f, 0.f, 0.f, 0.8f};
-        draw->drawRect(
-            {-hw, -hh}, {hw, hh},
-            {0.f, 0.f, 0.f, 0.f},
-            1.5f,
-            outline
-        );
-    }
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  PAUSE LAYER — add "Bot" button
+//  PAUSE LAYER — Bot button + B shortcut
 // ═══════════════════════════════════════════════════════════════════════════
 
 class $modify(XDBotPauseLayer, PauseLayer) {
+
     void customSetupButtons() {
         PauseLayer::customSetupButtons();
 
         auto* menu = this->getChildByType<CCMenu>(0);
         if (!menu) return;
 
-        // Create Bot button
-        auto* botSprite = ButtonSprite::create(
+        auto* lbl = ButtonSprite::create(
             "Bot", "goldFont.fnt", "GJ_button_01.png", 0.6f
         );
-        botSprite->setScale(0.8f);
+        lbl->setScale(0.75f);
 
-        auto* botBtn = CCMenuItemSpriteExtra::create(
-            botSprite,
-            this,
-            menu_selector(XDBotPauseLayer::onBotLayer)
+        auto* btn = CCMenuItemSpriteExtra::create(
+            lbl, this, menu_selector(XDBotPauseLayer::onBotLayer)
         );
 
-        // Position near the bottom-left of the pause menu
-        auto* winSize = CCDirector::get()->getWinSize();
-        botBtn->setPosition({-winSize.width / 2.f + 50.f, -winSize.height / 2.f + 30.f});
-        menu->addChild(botBtn);
+        auto* ws = CCDirector::get()->getWinSize();
+        btn->setPosition({-ws.width * 0.5f + 50.f, -ws.height * 0.5f + 28.f});
+        menu->addChild(btn);
     }
 
     void onBotLayer(CCObject*) {
         BotLayer::create()->show();
     }
 
-    // Keyboard shortcut: B key in pause menu opens bot layer
     void keyDown(enumKeyCodes key) {
         if (key == enumKeyCodes::KEY_B) {
             BotLayer::create()->show();
@@ -265,30 +176,9 @@ class $modify(XDBotPauseLayer, PauseLayer) {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  CCSCHEDULER — speedhack via time scale
-// ═══════════════════════════════════════════════════════════════════════════
-
-class $modify(XDBotScheduler, CCScheduler) {
-    void update(float dt) {
-        // Only apply speedhack if a level is active
-        if (!PlayLayer::get()) {
-            CCScheduler::update(dt);
-            return;
-        }
-        if (Mod::get()->getSettingValue<bool>("speedhack")) {
-            float speed = Mod::get()->getSettingValue<float>("speedhack-value");
-            CCScheduler::update(dt * speed);
-        } else {
-            CCScheduler::update(dt);
-        }
-    }
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  MOD ENTRY POINT
+//  MOD ENTRY
 // ═══════════════════════════════════════════════════════════════════════════
 
 $on_mod(Loaded) {
     log::info("XDBot Rework v{} loaded!", Mod::get()->getVersion().toString());
-    log::info("Macro directory: {}", BotManager::get()->getMacroDir().string());
 }

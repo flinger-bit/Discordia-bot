@@ -4,13 +4,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OSX_ARCHITECTURES "x86_64")
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
-project(XDBotRework VERSION 1.0.0)
+project(XDBotRework VERSION 1.1.0)
 
 add_library(${PROJECT_NAME} SHARED
     src/main.cpp
-    src/BotManager.cpp
-    src/layers/BotLayer.cpp
-    src/layers/MacroListLayer.cpp
+    src/Global.cpp
+    src/Macro.cpp
+    src/hacks/TpsBypass.cpp
+    src/hacks/Speedhack.cpp
+    src/hacks/Noclip.cpp
+    src/hacks/FrameStepper.cpp
+    src/hacks/Clickbot.cpp
+    src/hacks/Other.cpp
+    src/ui/BotLayer.cpp
+    src/ui/MacroListLayer.cpp
 )
 
 if (NOT DEFINED ENV{GEODE_SDK})
